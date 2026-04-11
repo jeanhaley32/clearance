@@ -339,9 +339,9 @@ input.inline-num:focus{border-color:var(--accent);}
       <div class="strategy-section" id="strategy-section">
         <div class="ps-title">Strategy</div>
         <select class="strategy-select" id="strategy-select" onchange="onStrategyChange()">
-          <option value="current">Current plan</option>
-          <option value="snowball">Snowball</option>
-          <option value="avalanche">Avalanche</option>
+          <option value="current" title="Each debt keeps its set monthly payment. No freed money is redirected.">Current plan</option>
+          <option value="snowball" title="Minimums on all debts, extra attacks the smallest balance. When it's gone, its payment rolls to the next smallest.">Snowball</option>
+          <option value="avalanche" title="Minimums on all debts, extra attacks the highest APR. Mathematically optimal — saves the most in interest.">Avalanche</option>
         </select>
         <div class="strategy-desc" id="strategy-desc">No reallocation — use your set payments</div>
         <div id="keep-controls" style="display:none;">
