@@ -418,9 +418,9 @@ input.inline-num:focus{border-color:var(--accent);}
         <option value="friend">Friend / family (0% APR)</option>
       </select>
     </div>
-    <div class="modal-field"><label>Starting balance ($)</label><input type="number" id="new-debt-balance" placeholder="0.00" min="0" step="0.01"></div>
-    <div class="modal-field" id="apr-field"><label>APR (%)</label><input type="number" id="new-debt-apr" placeholder="0.00" min="0" max="100" step="0.1" value="0"></div>
-    <div class="modal-field"><label>Monthly payment ($)</label><input type="number" id="new-debt-payment" placeholder="0.00" min="0" step="0.01"></div>
+    <div class="modal-field"><label>Starting balance ($)</label><input type="number" id="new-debt-balance" placeholder="0.00" min="0" step="0.01" oninput="updateMinPaymentHint()"></div>
+    <div class="modal-field" id="apr-field"><label>APR (%)</label><input type="number" id="new-debt-apr" placeholder="0.00" min="0" max="100" step="0.1" value="0" oninput="updateMinPaymentHint()"></div>
+    <div class="modal-field"><label>Monthly payment ($)</label><input type="number" id="new-debt-payment" placeholder="0.00" min="0" step="0.01"><div id="min-payment-hint" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;"></div></div>
     <div class="modal-field">
       <label>Color</label>
       <div class="color-picker" id="color-picker">
@@ -495,6 +495,7 @@ function showUndoToast(msg,undoFn){
 }
 function clampPositive(val){return Math.max(0,parseFloat(val)||0);}
 function clampApr(val){return Math.min(100,Math.max(0,parseFloat(val)||0));}
+function calcMinPayment(balance,apr){if(balance<=0)return 0;const monthly=balance*(apr/100/12)+balance*0.01;return Math.max(monthly,25);}
 let recalcTimeout=null;
 function debouncedRecalc(){if(recalcTimeout)clearTimeout(recalcTimeout);recalcTimeout=setTimeout(recalc,200);}
 
@@ -580,7 +581,9 @@ function renderDebts(){
       '<div class="debt-fields">'+
         '<div class="debt-field"><label>Balance ($)</label><input type="number" value="'+d.balance+'" min="0" step="0.01" oninput="updateDebtField('+d.id+',\'balance\',+this.value)"></div>'+
         '<div class="debt-field"><label>APR (%)</label><input type="number" value="'+d.apr+'" min="0" max="100" step="0.1" '+(d.type==='friend'?'disabled':'')+' oninput="updateDebtField('+d.id+',\'apr\',+this.value)"></div>'+
-        '<div class="debt-field full"><label>Monthly payment ($)</label><input type="number" value="'+d.payment+'" min="0" step="0.01" oninput="updateDebtField('+d.id+',\'payment\',+this.value)"></div>'+
+        '<div class="debt-field full"><label>Monthly payment ($)</label><input type="number" value="'+d.payment+'" min="0" step="0.01" oninput="updateDebtField('+d.id+',\'payment\',+this.value)">'+
+        (d.type==='cc'&&d.balance>0?'<div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;">min: '+fmt(calcMinPayment(d.balance,d.apr))+'</div>':'')+
+        '</div>'+
       '</div>';
     list.appendChild(div);
   });
@@ -1035,6 +1038,7 @@ function openAddDebt(){
   document.getElementById('apr-field').style.opacity='1';
   document.querySelectorAll('.color-dot').forEach(function(d,i){d.classList.toggle('selected',i===0);});
   selectedColor='#00e5ff';
+  document.getElementById('min-payment-hint').textContent='';
   document.getElementById('modal-debt').classList.add('open');
   setTimeout(function(){document.getElementById('new-debt-name').focus();},50);
 }
@@ -1043,6 +1047,18 @@ function onDebtTypeChange(){
   const aprField=document.getElementById('apr-field');
   if(type==='friend'){document.getElementById('new-debt-apr').value='0';aprField.style.opacity='0.4';}
   else{aprField.style.opacity='1';}
+  updateMinPaymentHint();
+}
+function updateMinPaymentHint(){
+  const type=document.getElementById('new-debt-type').value;
+  const balance=clampPositive(document.getElementById('new-debt-balance').value);
+  const apr=type==='friend'?0:clampApr(document.getElementById('new-debt-apr').value);
+  const hint=document.getElementById('min-payment-hint');
+  const paymentInput=document.getElementById('new-debt-payment');
+  if(type!=='cc'||balance<=0){hint.textContent='';return;}
+  const min=calcMinPayment(balance,apr);
+  hint.textContent='est. minimum: '+fmt(min)+'/mo';
+  if(!paymentInput.value||parseFloat(paymentInput.value)===0){paymentInput.value=min.toFixed(2);}
 }
 function confirmAddDebt(){
   const name=document.getElementById('new-debt-name').value.trim()||'Debt';
