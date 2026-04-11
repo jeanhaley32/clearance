@@ -66,10 +66,12 @@ function renderDebts(){
     const badgeClass=d.type==='cc'?'badge-cc':d.type==='friend'?'badge-friend':'badge-loan';
     const div=document.createElement('div');
     div.className='debt-item';
+    const isVisible=!debtHidden[d.id];
     div.innerHTML=
       '<div class="debt-item-header">'+
-        '<div style="width:10px;height:10px;border-radius:50%;background:'+safeColor(d.color)+';flex-shrink:0;"></div>'+
-        '<input class="debt-name" type="text" value="'+escHtml(d.name)+'" placeholder="Account name" oninput="updateDebtField('+d.id+',\'name\',this.value)">'+
+        '<input type="checkbox" '+(isVisible?'checked':'')+' onchange="toggleDebtVisibility('+d.id+')" title="Show on chart" style="accent-color:'+safeColor(d.color)+';cursor:pointer;margin-right:2px;">'+
+        '<div style="width:10px;height:10px;border-radius:50%;background:'+safeColor(d.color)+';flex-shrink:0;'+(isVisible?'':'opacity:0.3;')+'"></div>'+
+        '<input class="debt-name" type="text" value="'+escHtml(d.name)+'" placeholder="Account name" oninput="updateDebtField('+d.id+',\'name\',this.value)" style="'+(isVisible?'':'opacity:0.4;')+'">'+
         '<span class="debt-type-badge '+badgeClass+'">'+typeLabel+'</span>'+
         '<button class="remove-btn" onclick="removeDebt('+d.id+')">×</button>'+
       '</div>'+
@@ -83,6 +85,12 @@ function renderDebts(){
     list.appendChild(div);
   });
   document.getElementById('debts-total').textContent=fmt(total)+' total';
+}
+function toggleDebtVisibility(id){
+  if(debtHidden[id])delete debtHidden[id];
+  else debtHidden[id]=true;
+  renderDebts();
+  if(myChart)renderChart();
 }
 function updateDebtField(id,field,val){
   if(['name','balance','apr','payment'].indexOf(field)<0)return;
@@ -540,13 +548,13 @@ function renderChart() {
   const labels = [];
   for (let i = 0; i <= maxMonth; i++) labels.push(i === 0 ? 'Now' : fmtDateShort(i));
 
-  const datasets = debts.map(function(d) {
+  const visibleDebts = debts.filter(function(d) { return !debtHidden[d.id]; });
+  const datasets = visibleDebts.map(function(d) {
     const chartData = [];
     for (let i = 0; i < chain.length; i++) {
       const cd = chain[i].debts.find(function(x) { return x.id === d.id; });
       chartData.push(cd ? cd.balanceEnd : 0);
     }
-    // Check if debt is ever payable
     const everPaysOff = chartData[chartData.length - 1] <= 0.005;
     return {
       label: d.name,
@@ -560,7 +568,7 @@ function renderChart() {
 
   const legend = document.getElementById('chart-legend');
   legend.innerHTML = '';
-  debts.forEach(function(d) {
+  visibleDebts.forEach(function(d) {
     const item = document.createElement('div');
     item.className = 'legend-item';
     item.innerHTML = '<div class="legend-swatch" style="background:' + safeColor(d.color) + ';"></div>' + escHtml(d.name) + ' ' + d.apr + '%';
