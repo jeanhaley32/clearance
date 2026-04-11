@@ -457,6 +457,37 @@ input.inline-num:focus{border-color:var(--accent);}
   </div>
 </div>
 
+<!-- MONTH EDIT MODAL -->
+<div class="modal-overlay" id="modal-month-edit">
+  <div class="modal">
+    <h3>Edit Month <span id="edit-month-num"></span></h3>
+    <div class="modal-field">
+      <label>Income ($)</label>
+      <input type="number" id="edit-month-income" min="0" step="50">
+    </div>
+    <div class="modal-field">
+      <label>Strategy</label>
+      <select id="edit-month-strategy">
+        <option value="">— inherit —</option>
+        <option value="snowball">Snowball</option>
+        <option value="avalanche">Avalanche</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>Keep from rollover ($)</label>
+      <input type="number" id="edit-month-keep" min="0" step="10" placeholder="inherit %">
+    </div>
+    <div id="edit-month-debts"></div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button class="btn-secondary" onclick="resetMonthOverride()" style="color:var(--red);border-color:rgba(255,68,102,0.3);">reset month</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-secondary" onclick="closeModal('modal-month-edit')">Cancel</button>
+        <button class="btn-primary" onclick="saveMonthOverride()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -471,6 +502,7 @@ let myChart = null;
 let saveTimeout = null;
 let dirty = false;
 let hasExported = false;
+let overrides = {};
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 function fmt(n){if(isNaN(n))return '—';return '$'+Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
@@ -1071,6 +1103,91 @@ function confirmAddDebt(){
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 function pickColor(el){document.querySelectorAll('.color-dot').forEach(function(d){d.classList.remove('selected');});el.classList.add('selected');selectedColor=el.dataset.color;}
+
+// ─── MONTH EDIT ──────────────────────────────────────────────────────────────
+let editingMonth = null;
+
+function openMonthEdit(month) {
+  editingMonth = month;
+  const node = chain[month];
+  if (!node) return;
+  const ovr = overrides[month] || {};
+
+  document.getElementById('edit-month-num').textContent = month;
+  document.getElementById('edit-month-income').value = ovr.income !== undefined ? ovr.income : node.income;
+  document.getElementById('edit-month-strategy').value = ovr.strategy || '';
+  document.getElementById('edit-month-keep').value = ovr.keep !== undefined ? ovr.keep : '';
+
+  // Build per-debt payment fields
+  const container = document.getElementById('edit-month-debts');
+  container.innerHTML = '';
+  node.debts.forEach(function(d) {
+    if (d.balanceStart <= 0.005) return;
+    const dOvr = (ovr.debts && ovr.debts[d.id]) || {};
+    const div = document.createElement('div');
+    div.className = 'modal-field';
+    div.innerHTML =
+      '<label>' + escHtml(d.name) + ' payment ($)</label>' +
+      '<input type="number" class="edit-debt-payment" data-debt-id="' + d.id + '" min="0" step="0.01" ' +
+      'value="' + (dOvr.payment !== undefined ? dOvr.payment : '') + '" ' +
+      'placeholder="' + d.payment.toFixed(2) + ' (auto)">';
+    container.appendChild(div);
+  });
+
+  document.getElementById('modal-month-edit').classList.add('open');
+}
+
+function saveMonthOverride() {
+  const month = editingMonth;
+  if (month === null) return;
+  const ovr = {};
+
+  const incVal = document.getElementById('edit-month-income').value;
+  const incNum = parseFloat(incVal);
+  const node = chain[month];
+  if (!isNaN(incNum) && node && incNum !== node.income) ovr.income = incNum;
+
+  const stratVal = document.getElementById('edit-month-strategy').value;
+  if (stratVal) ovr.strategy = stratVal;
+
+  const keepVal = document.getElementById('edit-month-keep').value;
+  const keepNum = parseFloat(keepVal);
+  if (!isNaN(keepNum) && keepVal !== '') ovr.keep = keepNum;
+
+  // Debt payment overrides
+  const debtInputs = document.querySelectorAll('.edit-debt-payment');
+  const debtOvrs = {};
+  let hasDebtOvr = false;
+  debtInputs.forEach(function(inp) {
+    const id = parseInt(inp.dataset.debtId);
+    const val = parseFloat(inp.value);
+    if (!isNaN(val) && inp.value !== '') {
+      debtOvrs[id] = { payment: val };
+      hasDebtOvr = true;
+    }
+  });
+  if (hasDebtOvr) ovr.debts = debtOvrs;
+
+  if (Object.keys(ovr).length > 0) {
+    overrides[month] = ovr;
+  } else {
+    delete overrides[month];
+  }
+
+  closeModal('modal-month-edit');
+  markDirty();
+  recalc();
+}
+
+function resetMonthOverride() {
+  if (editingMonth !== null) {
+    delete overrides[editingMonth];
+    closeModal('modal-month-edit');
+    markDirty();
+    recalc();
+    showToast('month ' + editingMonth + ' reset', 'success');
+  }
+}
 
 // ─── THEME ────────────────────────────────────────────────────────────────────
 let themeState='auto';
