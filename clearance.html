@@ -290,12 +290,12 @@ input.inline-num:focus{border-color:var(--accent);}
     <div id="dashboard" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
       <div class="daily-hero">
         <div class="dh-cell">
-          <div class="dh-label">Free per day — now</div>
+          <div class="dh-label">Free per day — now (~30d/mo)</div>
           <div class="dh-amount accent" id="d-now">$0.00</div>
           <div class="dh-sub" id="d-now-sub">—</div>
         </div>
         <div class="dh-cell">
-          <div class="dh-label">Free per day — after dropoffs</div>
+          <div class="dh-label">Free per day — after dropoffs (~30d/mo)</div>
           <div class="dh-amount green" id="d-soon">$0.00</div>
           <div class="dh-sub" id="d-soon-sub">—</div>
         </div>
@@ -419,10 +419,15 @@ let hasExported = false;
 function fmt(n){if(isNaN(n))return '—';return '$'+Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function fmtMo(m){if(!m||m<=0)return '—';const y=Math.floor(m/12),mo=m%12;if(y===0)return mo+'mo';if(mo===0)return y+'yr';return y+'yr '+mo+'mo';}
 function pad(d,len){const o=d.slice();while(o.length<len+1)o.push(0);return o;}
+function padBalance(d,len,bal){const o=d.slice();while(o.length<len+1)o.push(bal);return o;}
 function hexToRgba(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return 'rgba('+r+','+g+','+b+','+a+')';}
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function safeColor(c){return /^#[0-9a-fA-F]{6}$/.test(c)?c:'#00e5ff';}
 function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(type||'');t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
+function clampPositive(val){return Math.max(0,parseFloat(val)||0);}
+function clampApr(val){return Math.min(100,Math.max(0,parseFloat(val)||0));}
+let recalcTimeout=null;
+function debouncedRecalc(){if(recalcTimeout)clearTimeout(recalcTimeout);recalcTimeout=setTimeout(recalc,200);}
 
 // ─── TABS ────────────────────────────────────────────────────────────────────
 function switchTab(tab){
@@ -464,8 +469,8 @@ function renderBills(){
   document.getElementById('bills-total').textContent=fmt(total)+'/mo';
 }
 function updateBillName(id,val){const b=bills.find(function(x){return x.id===id;});if(b){b.name=val;markDirty();}}
-function updateBillAmount(id,val){const b=bills.find(function(x){return x.id===id;});if(b){b.amount=parseFloat(val)||0;markDirty();recalc();}}
-function updateBillDropoff(id,val){const b=bills.find(function(x){return x.id===id;});if(b){const n=parseInt(val);b.dropoff=n>0?n:null;markDirty();recalc();}}
+function updateBillAmount(id,val){const b=bills.find(function(x){return x.id===id;});if(b){b.amount=clampPositive(val);markDirty();debouncedRecalc();}}
+function updateBillDropoff(id,val){const b=bills.find(function(x){return x.id===id;});if(b){const n=parseInt(val);b.dropoff=n>0?n:null;markDirty();debouncedRecalc();}}
 function cleanBillDropoff(id,input){const b=bills.find(function(x){return x.id===id;});if(b&&(!input.value||parseInt(input.value)<1)){b.dropoff=null;renderBills();recalc();markDirty();}}
 function clearBillDropoff(id){const b=bills.find(function(x){return x.id===id;});if(b){b.dropoff=null;renderBills();recalc();markDirty();}}
 function addBillDropoff(id){
@@ -505,7 +510,15 @@ function renderDebts(){
   });
   document.getElementById('debts-total').textContent=fmt(total)+' total';
 }
-function updateDebtField(id,field,val){const d=debts.find(function(x){return x.id===id;});if(d){d[field]=field==='name'?val:val;markDirty();recalc();}}
+function updateDebtField(id,field,val){
+  if(['name','balance','apr','payment'].indexOf(field)<0)return;
+  const d=debts.find(function(x){return x.id===id;});
+  if(!d)return;
+  if(field==='name')d.name=val;
+  else if(field==='apr')d.apr=clampApr(val);
+  else d[field]=clampPositive(val);
+  markDirty();debouncedRecalc();
+}
 function removeDebt(id){debts=debts.filter(function(d){return d.id!==id;});renderDebts();recalc();markDirty();}
 
 // ─── CALC ────────────────────────────────────────────────────────────────────
@@ -513,21 +526,27 @@ function calcDebt(d){
   const rate=d.apr/100/12;
   let rem=d.balance,interest=0,months=0;
   const data=[parseFloat(rem.toFixed(2))];
+  if(d.payment<=0&&rem>0.005){
+    return{months:0,interest:0,data:data,payable:false};
+  }
+  if(rate>0&&d.payment<=rem*rate){
+    return{months:0,interest:0,data:data,payable:false};
+  }
   while(rem>0.005&&months<600){
     const i=rem*rate;
-    if(d.payment<=i&&rate>0){data.push(parseFloat(rem.toFixed(2)));months++;continue;}
     interest+=i;
     rem=rem+i-d.payment;
     if(rem<0)rem=0;
     months++;
     data.push(parseFloat(Math.max(0,rem).toFixed(2)));
   }
-  return{months:months,interest:interest,data:data};
+  return{months:months,interest:interest,data:data,payable:true};
 }
 
 // ─── RECALC ──────────────────────────────────────────────────────────────────
 function recalc(){
-  const inc=parseFloat(document.getElementById('income-input').value)||0;
+  if(recalcTimeout){clearTimeout(recalcTimeout);recalcTimeout=null;}
+  const inc=clampPositive(document.getElementById('income-input').value);
   income=inc;
 
   let permBills=0,dropBills=0,earliestDropoff=Infinity;
@@ -574,13 +593,12 @@ function recalc(){
   }
 
   const results=debts.map(function(d){return calcDebt(d);});
-  let hasWarn=false;
-  results.forEach(function(r,i){if(debts[i].apr>0&&debts[i].payment<=debts[i].balance*debts[i].apr/100/12)hasWarn=true;});
+  const hasWarn=results.some(function(r){return !r.payable;});
   document.getElementById('warn-bar').style.display=hasWarn?'block':'none';
 
-  const maxMonths=results.reduce(function(m,r){return Math.max(m,r.months);},0);
+  const maxMonths=results.reduce(function(m,r){return r.payable?Math.max(m,r.months):m;},0);
   const totalInterest=results.reduce(function(s,r){return s+r.interest;},0);
-  const totalPaidOut=debts.reduce(function(s,d){return s+d.balance;},0)+totalInterest;
+  const totalPaidOut=debts.reduce(function(s,d,i){return results[i].payable?s+d.balance:s;},0)+totalInterest;
 
   document.getElementById('m-cleared').textContent=fmtMo(maxMonths);
   document.getElementById('m-interest').textContent=fmt(totalInterest);
@@ -592,13 +610,15 @@ function recalc(){
   blist.innerHTML='';
   debts.forEach(function(d,i){
     const r=results[i];
+    const paidOffText=r.payable?fmtMo(r.months):'<span style="color:var(--red)">unpayable</span>';
     const card=document.createElement('div');
     card.className='debt-summary-card';
+    if(!r.payable)card.style.borderColor='var(--red)';
     card.innerHTML=
       '<div class="dsc-name"><span>'+escHtml(d.name)+'</span><span style="font-family:var(--mono);font-size:11px;color:'+safeColor(d.color)+';">'+d.apr+'%</span></div>'+
       '<div class="dsc-row"><span>Balance</span><span>'+fmt(d.balance)+'</span></div>'+
       '<div class="dsc-row"><span>Payment</span><span>'+fmt(d.payment)+'/mo</span></div>'+
-      '<div class="dsc-row"><span>Paid off</span><span class="good">'+fmtMo(r.months)+'</span></div>'+
+      '<div class="dsc-row"><span>Paid off</span><span class="good">'+paidOffText+'</span></div>'+
       '<div class="dsc-row"><span>Interest</span><span class="warn-val">'+fmt(r.interest)+'</span></div>';
     blist.appendChild(card);
   });
@@ -607,7 +627,9 @@ function recalc(){
   const labels=[];
   for(let i=0;i<=maxMonths;i++)labels.push(i===0?'Now':i+'m');
   const datasets=debts.map(function(d,i){
-    return{label:d.name,data:pad(results[i].data,maxMonths),borderColor:safeColor(d.color),backgroundColor:hexToRgba(safeColor(d.color),0.07),fill:true,tension:0.35,borderWidth:2,pointRadius:0};
+    const r=results[i];
+    const chartData=r.payable?pad(r.data,maxMonths):padBalance(r.data,maxMonths,d.balance);
+    return{label:d.name,data:chartData,borderColor:safeColor(d.color),backgroundColor:hexToRgba(safeColor(d.color),0.07),fill:true,tension:0.35,borderWidth:2,pointRadius:0,borderDash:r.payable?[]:[5,5]};
   });
 
   const legend=document.getElementById('chart-legend');
@@ -859,7 +881,7 @@ function openAddBill(){
 }
 function confirmAddBill(){
   const name=document.getElementById('new-bill-name').value.trim()||'Bill';
-  const amount=parseFloat(document.getElementById('new-bill-amount').value)||0;
+  const amount=clampPositive(document.getElementById('new-bill-amount').value);
   const dropoff=parseInt(document.getElementById('new-bill-dropoff').value)||null;
   bills.push({id:nextBillId++,name:name,amount:amount,dropoff:dropoff});
   closeModal('modal-bill');renderBills();recalc();markDirty();
@@ -886,9 +908,9 @@ function onDebtTypeChange(){
 function confirmAddDebt(){
   const name=document.getElementById('new-debt-name').value.trim()||'Debt';
   const type=document.getElementById('new-debt-type').value;
-  const balance=parseFloat(document.getElementById('new-debt-balance').value)||0;
-  const apr=type==='friend'?0:(parseFloat(document.getElementById('new-debt-apr').value)||0);
-  const payment=parseFloat(document.getElementById('new-debt-payment').value)||0;
+  const balance=clampPositive(document.getElementById('new-debt-balance').value);
+  const apr=type==='friend'?0:clampApr(document.getElementById('new-debt-apr').value);
+  const payment=clampPositive(document.getElementById('new-debt-payment').value);
   debts.push({id:nextDebtId++,name:name,type:type,balance:balance,apr:apr,payment:payment,color:selectedColor});
   closeModal('modal-debt');renderDebts();recalc();markDirty();
 }
@@ -906,7 +928,7 @@ document.addEventListener('keydown',function(e){
   }
 });
 document.querySelectorAll('.modal-overlay').forEach(function(m){m.addEventListener('click',function(e){if(e.target===this)closeModal(this.id);});});
-document.getElementById('income-input').addEventListener('input',function(){income=parseFloat(this.value)||0;markDirty();recalc();});
+document.getElementById('income-input').addEventListener('input',function(){income=clampPositive(this.value);markDirty();debouncedRecalc();});
 
 // ─── INIT ──────────────────────────────────────────────────────────────────────
 window.addEventListener('beforeunload',function(){if(dirty)autoSave();});
