@@ -73,6 +73,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13
 .hbtn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
 .hbtn.save-indicator{border-color:var(--green);color:var(--green);}
 
+/* VIEW TOGGLE */
+.view-toggle{display:flex;background:var(--s2);border:1px solid var(--border2);border-radius:6px;overflow:hidden;margin-left:1rem;}
+.view-btn{background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:10px;letter-spacing:0.04em;padding:5px 14px;cursor:pointer;transition:all 0.15s;}
+.view-btn:hover{color:var(--text);}
+.view-btn.active{background:var(--accent-dim);color:var(--accent);font-weight:500;}
+
 /* LAYOUT */
 .app{display:grid;grid-template-columns:300px 1fr;flex:1;overflow:hidden;}
 
@@ -249,6 +255,52 @@ input.inline-num:focus{border-color:var(--accent);}
 
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
 
+/* DIARY */
+.diary-view{display:none;flex-direction:column;flex:1;overflow-y:auto;padding:1.5rem;max-width:600px;margin:0 auto;width:100%;}
+.diary-view.active{display:flex;}
+.diary-date-nav{display:flex;align-items:center;justify-content:center;gap:1rem;margin-bottom:1.25rem;}
+.diary-date-nav button{background:none;border:1px solid var(--border2);border-radius:5px;color:var(--muted2);font-family:var(--mono);font-size:12px;padding:4px 10px;cursor:pointer;transition:all 0.15s;}
+.diary-date-nav button:hover{border-color:var(--accent);color:var(--accent);}
+.diary-date-nav .diary-today{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--text);min-width:180px;text-align:center;}
+.diary-hero{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.25rem;}
+.diary-hero-cell{background:var(--s1);padding:1rem;text-align:center;}
+.diary-hero-label{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;}
+.diary-hero-val{font-family:var(--mono);font-size:24px;font-weight:500;}
+.diary-hero-val.green{color:var(--green);}
+.diary-hero-val.red{color:var(--red);}
+.diary-hero-val.accent{color:var(--accent);}
+.diary-add{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1.25rem;}
+.diary-amount-row{display:flex;gap:8px;margin-bottom:10px;}
+.diary-amount-input{flex:1;background:var(--s3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:18px;padding:10px 14px;outline:none;text-align:center;}
+.diary-amount-input:focus{border-color:var(--accent);}
+.diary-amount-input::placeholder{color:var(--muted);font-size:14px;}
+.diary-cats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.diary-cat-btn{background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:12px 8px;cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;}
+.diary-cat-btn:hover{border-color:var(--accent);background:var(--accent-dim);}
+.diary-cat-btn .cat-icon{font-size:18px;}
+.diary-cat-btn .cat-label{font-size:10px;letter-spacing:0.04em;}
+.diary-note-toggle{background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:10px;cursor:pointer;padding:6px 0;opacity:0.6;transition:opacity 0.15s;}
+.diary-note-toggle:hover{opacity:1;color:var(--accent);}
+.diary-note-input{width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 10px;outline:none;margin-top:6px;display:none;}
+.diary-note-input:focus{border-color:var(--accent);}
+.diary-entries{margin-bottom:1.25rem;}
+.diary-section-title{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:8px;}
+.diary-entry{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s1);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;transition:border-color 0.15s;}
+.diary-entry:hover{border-color:var(--border2);}
+.diary-entry-icon{font-size:14px;flex-shrink:0;}
+.diary-entry-amount{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text);min-width:60px;}
+.diary-entry-cat{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;}
+.diary-entry-note{flex:1;font-family:var(--mono);font-size:11px;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.diary-entry .remove-btn{flex-shrink:0;}
+.diary-month-summary{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:1rem;}
+.diary-cat-totals{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
+.diary-cat-total{text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted2);}
+.diary-cat-total .cat-icon{font-size:14px;}
+.diary-cat-total .cat-amount{font-size:14px;font-weight:500;color:var(--text);margin-top:2px;}
+.diary-progress{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-bottom:6px;}
+.diary-progress-bar{height:100%;border-radius:3px;transition:width 0.3s;}
+.diary-progress-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;}
+
 /* RESPONSIVE */
 @media(max-width:800px){
   .app{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
@@ -272,6 +324,10 @@ input.inline-num:focus{border-color:var(--accent);}
   .strategy-section{padding:0.75rem;}
   .proj-slider-wrap input[type=range]{height:28px;}
   .tab-btn{padding:12px 10px;font-size:11px;}
+  .diary-view{padding:1rem;}
+  .diary-hero-val{font-size:20px;}
+  .diary-amount-input{font-size:16px;}
+  .view-toggle{margin-left:0.5rem;}
 }
 @media(max-width:480px){
   .header-stats{display:none;}
@@ -291,6 +347,12 @@ input.inline-num:focus{border-color:var(--accent);}
   .debt-summary-card{padding:8px 10px;}
   .dsc-name{font-size:11px;}
   .proj-tick span{font-size:7px;}
+  .diary-view{padding:0.75rem;}
+  .diary-hero{grid-template-columns:1fr 1fr 1fr;}
+  .diary-hero-cell{padding:0.6rem;}
+  .diary-hero-val{font-size:18px;}
+  .diary-cat-btn{padding:10px 6px;}
+  .view-btn{padding:4px 8px;font-size:9px;}
 }
 </style>
 </head>
@@ -299,6 +361,10 @@ input.inline-num:focus{border-color:var(--accent);}
 <header class="header">
   <div class="logo">Clearance</div>
   <div class="header-right">
+    <div class="view-toggle">
+      <button class="view-btn active" id="view-dashboard-btn" onclick="switchView('dashboard')">Dashboard</button>
+      <button class="view-btn" id="view-diary-btn" onclick="switchView('diary')">Diary</button>
+    </div>
     <div class="header-stats">
       <div class="hstat">
         <div class="hstat-label">income</div>
@@ -452,6 +518,43 @@ input.inline-num:focus{border-color:var(--accent);}
           <div class="bp-title">Per account</div>
           <div id="breakdown-list"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- DIARY VIEW -->
+    <div class="diary-view" id="diary-view">
+      <div class="diary-date-nav">
+        <button onclick="diaryPrevDay()" title="Previous day">◀</button>
+        <div class="diary-today" id="diary-date-label">Today</div>
+        <button onclick="diaryNextDay()" title="Next day">▶</button>
+        <button onclick="diaryGoToday()" title="Go to today" style="font-size:10px;">today</button>
+      </div>
+      <div class="diary-hero">
+        <div class="diary-hero-cell"><div class="diary-hero-label">Budget</div><div class="diary-hero-val accent" id="diary-budget">$0</div></div>
+        <div class="diary-hero-cell"><div class="diary-hero-label">Spent</div><div class="diary-hero-val" id="diary-spent">$0</div></div>
+        <div class="diary-hero-cell"><div class="diary-hero-label">Left</div><div class="diary-hero-val green" id="diary-left">$0</div></div>
+      </div>
+      <div class="diary-add" id="diary-add-section">
+        <div class="diary-amount-row">
+          <input type="number" class="diary-amount-input" id="diary-amount" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <div class="diary-cats">
+          <button class="diary-cat-btn" onclick="diaryAddEntry('food')"><span class="cat-icon">🍽</span><span class="cat-label">Food</span></button>
+          <button class="diary-cat-btn" onclick="diaryAddEntry('essentials')"><span class="cat-icon">🏠</span><span class="cat-label">Essentials</span></button>
+          <button class="diary-cat-btn" onclick="diaryAddEntry('lifestyle')"><span class="cat-icon">✨</span><span class="cat-label">Lifestyle</span></button>
+        </div>
+        <button class="diary-note-toggle" id="diary-note-toggle" onclick="toggleDiaryNote()">+ add note</button>
+        <input type="text" class="diary-note-input" id="diary-note" placeholder="what was this for?" maxlength="60">
+      </div>
+      <div class="diary-entries">
+        <div class="diary-section-title">today's spending</div>
+        <div id="diary-entries-list"></div>
+      </div>
+      <div class="diary-month-summary">
+        <div class="diary-section-title" id="diary-month-title">this month</div>
+        <div class="diary-cat-totals" id="diary-cat-totals"></div>
+        <div class="diary-progress"><div class="diary-progress-bar" id="diary-progress-bar" style="width:0%;background:var(--green);"></div></div>
+        <div class="diary-progress-label" id="diary-progress-label">$0 of $0</div>
       </div>
     </div>
   </main>

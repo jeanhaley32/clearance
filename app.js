@@ -20,6 +20,9 @@ let rolloverExplained = false;
 let inlineEditHintShown = false;
 let debtFocused = {}; // { debtId: true } — when empty, show all; when set, show only focused
 let startDate = null; // Date object, first of the start month
+let diaryEntries = [];
+let nextDiaryId = 1;
+let diaryDate = null; // currently viewed date
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 function fmt(n){if(isNaN(n))return '—';return '$'+Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
@@ -78,7 +81,7 @@ function autoSave(){
 
 // ─── LOCALSTORAGE ────────────────────────────────────────────────────────────
 function saveToCache(silent){
-  const state={income:income,bills:bills,debts:debts,nextBillId:nextBillId,nextDebtId:nextDebtId,hasExported:hasExported,strategy:strategy,keepPct:keepPct,overrides:overrides,startDate:startDate?startDate.toISOString():null,savedAt:new Date().toISOString()};
+  const state={income:income,bills:bills,debts:debts,nextBillId:nextBillId,nextDebtId:nextDebtId,hasExported:hasExported,strategy:strategy,keepPct:keepPct,overrides:overrides,startDate:startDate?startDate.toISOString():null,diaryEntries:diaryEntries,nextDiaryId:nextDiaryId,savedAt:new Date().toISOString()};
   try{
     localStorage.setItem('clearance_state',JSON.stringify(state));
     dirty=false;
@@ -106,6 +109,8 @@ function loadFromCache(){
     keepPct=state.keepPct||0;
     overrides=state.overrides||{};
     if(state.startDate){startDate=new Date(state.startDate);const sd=document.getElementById('start-date-input');sd.value=startDate.getFullYear()+'-'+String(startDate.getMonth()+1).padStart(2,'0');}else{startDate=null;}
+    diaryEntries = state.diaryEntries || [];
+    nextDiaryId = state.nextDiaryId || Math.max.apply(null, diaryEntries.map(function(e){return e.id;}).concat([0])) + 1;
     document.getElementById('strategy-select').value=strategy;
     document.getElementById('strategy-desc').textContent=strategyDescs[strategy]||'';
     document.getElementById('keep-controls').style.display=strategy==='current'?'none':'';
@@ -289,6 +294,9 @@ function clearAll(){
   document.getElementById('strategy-desc').textContent=strategyDescs['current'];
   document.getElementById('keep-controls').style.display='none';
   document.getElementById('keep-pct').value=0;
+  diaryEntries = [];
+  nextDiaryId = 1;
+  diaryDate = null;
   startDate=null;
   const defDate=getStartDate();
   document.getElementById('start-date-input').value=defDate.getFullYear()+'-'+String(defDate.getMonth()+1).padStart(2,'0');
@@ -523,6 +531,29 @@ function initTheme(){
     if(saved==='light'||saved==='dark'||saved==='auto')themeState=saved;
   }catch(e){}
   applyTheme(themeState);
+}
+
+// ─── VIEW TOGGLE ──────────────────────────────────────────────────────────
+let currentView = 'dashboard';
+
+function switchView(view) {
+  currentView = view;
+  document.getElementById('view-dashboard-btn').classList.toggle('active', view === 'dashboard');
+  document.getElementById('view-diary-btn').classList.toggle('active', view === 'diary');
+
+  // Show/hide views
+  const app = document.querySelector('.app');
+  const diary = document.getElementById('diary-view');
+
+  if (view === 'diary') {
+    app.style.display = 'none';
+    diary.classList.add('active');
+    if (!diaryDate) diaryDate = diaryToday();
+    renderDiary();
+  } else {
+    app.style.display = '';
+    diary.classList.remove('active');
+  }
 }
 
 // ─── KEYBOARD ─────────────────────────────────────────────────────────────────
