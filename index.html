@@ -188,6 +188,21 @@ input.inline-num:focus{border-color:var(--accent);}
 .dsc-row span:last-child{color:var(--text);}
 .dsc-row span.good{color:var(--green);}
 .dsc-row span.warn-val{color:var(--red);}
+.dsc-val-editable{cursor:pointer;border-bottom:1px dashed var(--accent);padding-bottom:1px;transition:all 0.15s;}
+.dsc-val-editable:hover{background:var(--accent-dim);color:var(--accent);}
+.dsc-val-editable.overridden{color:var(--accent);}
+.dsc-inline-edit{display:inline-flex;align-items:center;gap:4px;}
+.dsc-inline-input{background:var(--s3);border:1px solid var(--accent);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:11px;padding:2px 6px;width:70px;text-align:right;outline:none;}
+.dsc-inline-actions{display:inline-flex;gap:2px;}
+.dsc-inline-actions button{background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px;line-height:1;}
+.dsc-inline-actions .confirm{color:var(--green);}
+.dsc-inline-actions .cancel{color:var(--muted);}
+.dsc-revert{background:none;border:none;color:var(--muted);cursor:pointer;font-family:var(--mono);font-size:9px;opacity:0.5;margin-left:4px;padding:0;}
+.dsc-revert:hover{color:var(--accent);opacity:1;}
+.extra-income-line{font-family:var(--mono);font-size:10px;color:var(--green);padding:4px 0;cursor:pointer;}
+.extra-income-line:hover{color:var(--accent);}
+.add-extra-link{font-family:var(--mono);font-size:9px;color:var(--muted);cursor:pointer;padding:4px 0;opacity:0.6;transition:all 0.15s;}
+.add-extra-link:hover{color:var(--accent);opacity:1;}
 .warn-bar{background:var(--red-dim);border-bottom:1px solid rgba(255,68,102,0.2);color:var(--red);padding:8px 1.5rem;font-family:var(--mono);font-size:11px;display:none;flex-shrink:0;}
 
 /* EMPTY STATE */
@@ -806,6 +821,7 @@ let overrides = {};
 let chain = [];
 let detailMonth = null;
 let rolloverExplained = false;
+let inlineEditHintShown = false;
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 function fmt(n){if(isNaN(n))return '—';return '$'+Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
@@ -1147,22 +1163,6 @@ function renderBreakdown() {
     const node = chain[detailMonth];
     bpTitle.innerHTML = '<span style="cursor:pointer;" onclick="detailMonth=null;renderBreakdown();">&larr; </span>Month ' + detailMonth + ' of ' + (chain.length - 1);
 
-    node.debts.forEach(function(d) {
-      if (d.balanceStart <= 0 && !d.paidOff) return; // skip long-dead debts
-      const card = document.createElement('div');
-      card.className = 'debt-summary-card';
-      if (!d.payable) card.style.borderColor = 'var(--red)';
-      if (d.paidOff) card.style.borderColor = 'var(--green)';
-      const debt = debts.find(function(x) { return x.id === d.id; });
-      card.innerHTML =
-        '<div class="dsc-name"><span>' + escHtml(d.name) + '</span><span style="font-family:var(--mono);font-size:11px;color:' + safeColor(debt ? debt.color : '#00e5ff') + ';">' + d.apr + '%</span></div>' +
-        '<div class="dsc-row"><span>Balance</span><span>' + (d.paidOff ? '<span style="color:var(--green)">paid off</span>' : fmt(d.balanceEnd)) + '</span></div>' +
-        '<div class="dsc-row"><span>Payment</span><span>' + fmt(d.payment) + '</span></div>' +
-        '<div class="dsc-row"><span>Interest</span><span class="warn-val">' + fmt(d.interest) + '</span></div>' +
-        (d.paidOff ? '<div class="dsc-row"><span>Rollover</span><span class="good">' + fmt(d.paymentSlot) + ' freed</span></div>' : '');
-      blist.appendChild(card);
-    });
-
     // Contextual date
     const contextDiv = document.createElement('div');
     contextDiv.style.cssText = 'font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.6;';
@@ -1170,7 +1170,141 @@ function renderBreakdown() {
     dateEst.setMonth(dateEst.getMonth() + detailMonth);
     const monthName = dateEst.toLocaleDateString(undefined, {month:'short', year:'numeric'});
     contextDiv.textContent = 'Projected snapshot for ~' + monthName;
-    blist.insertBefore(contextDiv, blist.firstChild);
+    blist.appendChild(contextDiv);
+
+    // Extra income display
+    const ovr = overrides[detailMonth] || {};
+    if (ovr.extraIncome && ovr.extraIncome > 0) {
+      const extraDiv = document.createElement('div');
+      extraDiv.className = 'extra-income-line';
+      extraDiv.textContent = '+ ' + fmt(ovr.extraIncome) + (ovr.extraNote ? ' — ' + ovr.extraNote : ' extra income');
+      extraDiv.title = 'Click to edit in month options';
+      extraDiv.onclick = function() { openMonthEdit(detailMonth); };
+      blist.appendChild(extraDiv);
+    }
+
+    // Debt cards with inline-editable payments
+    let firstEditableHinted = false;
+    node.debts.forEach(function(d) {
+      if (d.balanceStart <= 0 && !d.paidOff) return; // skip long-dead debts
+      const card = document.createElement('div');
+      card.className = 'debt-summary-card';
+      if (!d.payable) card.style.borderColor = 'var(--red)';
+      if (d.paidOff) card.style.borderColor = 'var(--green)';
+      const debt = debts.find(function(x) { return x.id === d.id; });
+      const debtColor = safeColor(debt ? debt.color : '#00e5ff');
+
+      // Check if this payment has an override
+      const hasPaymentOverride = ovr.debts && ovr.debts[d.id] && ovr.debts[d.id].payment !== undefined;
+
+      // Build card content
+      card.innerHTML =
+        '<div class="dsc-name"><span>' + escHtml(d.name) + '</span><span style="font-family:var(--mono);font-size:11px;color:' + debtColor + ';">' + d.apr + '%</span></div>' +
+        '<div class="dsc-row"><span>Balance</span><span>' + (d.paidOff ? '<span style="color:var(--green)">paid off</span>' : fmt(d.balanceEnd)) + '</span></div>' +
+        '<div class="dsc-row dsc-payment-row" data-debt-id="' + d.id + '"></div>' +
+        '<div class="dsc-row"><span>Interest</span><span class="warn-val">' + fmt(d.interest) + '</span></div>' +
+        (d.paidOff ? '<div class="dsc-row"><span>Rollover</span><span class="good">' + fmt(d.paymentSlot) + ' freed</span></div>' : '');
+
+      // Build the interactive payment row
+      const payRow = card.querySelector('.dsc-payment-row');
+      if (payRow && !d.paidOff) {
+        const label = document.createElement('span');
+        label.textContent = 'Payment';
+        payRow.appendChild(label);
+
+        const valWrap = document.createElement('span');
+
+        const valSpan = document.createElement('span');
+        valSpan.className = 'dsc-val-editable' + (hasPaymentOverride ? ' overridden' : '');
+        valSpan.textContent = fmt(d.payment);
+        valSpan.title = 'Click to adjust payment';
+        valSpan.onclick = function() {
+          // Replace with inline edit
+          valWrap.innerHTML = '';
+          const editWrap = document.createElement('span');
+          editWrap.className = 'dsc-inline-edit';
+          const inp = document.createElement('input');
+          inp.className = 'dsc-inline-input';
+          inp.type = 'number';
+          inp.min = '0';
+          inp.step = '0.01';
+          inp.value = d.payment.toFixed(2);
+          const actions = document.createElement('span');
+          actions.className = 'dsc-inline-actions';
+          const confirmBtn = document.createElement('button');
+          confirmBtn.className = 'confirm';
+          confirmBtn.textContent = '\u2713';
+          confirmBtn.title = 'Confirm';
+          confirmBtn.onclick = function() {
+            const newVal = parseFloat(inp.value);
+            if (isNaN(newVal) || newVal < 0) return;
+            if (!overrides[detailMonth]) overrides[detailMonth] = {};
+            if (!overrides[detailMonth].debts) overrides[detailMonth].debts = {};
+            overrides[detailMonth].debts[d.id] = { payment: newVal };
+            markDirty();
+            recalc();
+            showToast('Month ' + detailMonth + ': ' + escHtml(d.name) + ' payment set to ' + fmt(newVal), 'success');
+          };
+          const cancelBtn = document.createElement('button');
+          cancelBtn.className = 'cancel';
+          cancelBtn.textContent = '\u2717';
+          cancelBtn.title = 'Cancel';
+          cancelBtn.onclick = function() { renderBreakdown(); };
+
+          editWrap.appendChild(inp);
+          actions.appendChild(confirmBtn);
+          actions.appendChild(cancelBtn);
+          editWrap.appendChild(actions);
+          valWrap.appendChild(editWrap);
+          inp.focus();
+          inp.select();
+
+          // Enter to confirm, Escape to cancel
+          inp.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); confirmBtn.click(); }
+            if (e.key === 'Escape') { e.preventDefault(); cancelBtn.click(); }
+          });
+        };
+
+        valWrap.appendChild(valSpan);
+
+        // Revert button if overridden
+        if (hasPaymentOverride) {
+          const revertBtn = document.createElement('button');
+          revertBtn.className = 'dsc-revert';
+          revertBtn.textContent = '\u21A9';
+          revertBtn.title = 'Revert to auto';
+          revertBtn.onclick = function(e) {
+            e.stopPropagation();
+            if (overrides[detailMonth] && overrides[detailMonth].debts) {
+              delete overrides[detailMonth].debts[d.id];
+              if (Object.keys(overrides[detailMonth].debts).length === 0) delete overrides[detailMonth].debts;
+              if (Object.keys(overrides[detailMonth]).length === 0) delete overrides[detailMonth];
+            }
+            markDirty();
+            recalc();
+            showToast(escHtml(d.name) + ' payment reverted to auto', 'success');
+          };
+          valWrap.appendChild(revertBtn);
+        }
+
+        payRow.appendChild(valWrap);
+      } else if (payRow && d.paidOff) {
+        payRow.innerHTML = '<span>Payment</span><span>' + fmt(d.payment) + ' (final)</span>';
+      }
+
+      blist.appendChild(card);
+
+      // One-time hint for first editable payment
+      if (!inlineEditHintShown && !firstEditableHinted && !d.paidOff && d.balanceStart > 0.005) {
+        const hint = document.createElement('div');
+        hint.style.cssText = 'font-family:var(--mono);font-size:9px;color:var(--muted);opacity:0.5;padding:2px 0 4px;';
+        hint.textContent = 'click a payment to adjust';
+        card.appendChild(hint);
+        inlineEditHintShown = true;
+        firstEditableHinted = true;
+      }
+    });
 
     // Rollovers
     node.rollovers.forEach(function(r) {
@@ -1185,6 +1319,15 @@ function renderBreakdown() {
       blist.appendChild(div);
     });
 
+    // Add extra income link (when not already set)
+    if (!ovr.extraIncome || ovr.extraIncome <= 0) {
+      const addExtraLink = document.createElement('div');
+      addExtraLink.className = 'add-extra-link';
+      addExtraLink.textContent = '+ add extra income for this month';
+      addExtraLink.onclick = function() { openMonthEdit(detailMonth); };
+      blist.appendChild(addExtraLink);
+    }
+
     // Surplus
     const surpDiv = document.createElement('div');
     surpDiv.style.cssText = 'font-family:var(--mono);font-size:10px;color:var(--muted);padding:8px 0;border-top:1px solid var(--border);margin-top:4px;';
@@ -1194,14 +1337,14 @@ function renderBreakdown() {
     // Edit button
     const editBtn = document.createElement('button');
     editBtn.className = 'add-btn';
-    editBtn.textContent = 'override this month';
+    editBtn.textContent = 'more options';
     editBtn.style.marginTop = '8px';
     editBtn.onclick = function() { openMonthEdit(detailMonth); };
     blist.appendChild(editBtn);
 
     const editHint = document.createElement('div');
     editHint.style.cssText = 'font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;opacity:0.5;';
-    editHint.textContent = 'adjust income, strategy, or payments for this month';
+    editHint.textContent = 'income, strategy, and rollover settings';
     blist.appendChild(editHint);
 
   } else {
