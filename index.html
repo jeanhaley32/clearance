@@ -527,6 +527,14 @@ input.inline-num:focus{border-color:var(--accent);}
       <label>Keep from rollover ($)</label>
       <input type="number" id="edit-month-keep" min="0" step="10" placeholder="inherit %">
     </div>
+    <div class="modal-field">
+      <label>Extra income this month ($)</label>
+      <input type="number" id="edit-month-extra" min="0" step="50" placeholder="0">
+    </div>
+    <div class="modal-field">
+      <label>What's it from? (optional)</label>
+      <input type="text" id="edit-month-extra-note" maxlength="40" placeholder="e.g. tax refund, sold car">
+    </div>
     <div id="edit-month-debts"></div>
     <div class="modal-actions" style="justify-content:space-between;">
       <button class="btn-secondary" onclick="resetMonthOverride()" style="color:var(--red);border-color:rgba(255,68,102,0.3);">reset month</button>
@@ -583,6 +591,8 @@ function buildChain(seed, overrides, maxMonths) {
   chain.push({
     month: 0,
     income: seed.income,
+    extraIncome: 0,
+    extraNote: '',
     activeBills: m0Bills,
     totalBills: m0TotalBills,
     debts: m0Debts,
@@ -612,6 +622,10 @@ function buildChain(seed, overrides, maxMonths) {
       if (ovr.strategy !== undefined) monthStrategy = ovr.strategy;
       if (ovr.keepPct !== undefined) monthKeepPct = ovr.keepPct;
     }
+
+    let extraIncome = 0;
+    let extraNote = '';
+    if (ovr && ovr.extraIncome) { extraIncome = ovr.extraIncome; extraNote = ovr.extraNote || ''; }
 
     // Step 3: Compute bills
     const monthBills = allBills.filter(function(b) {
@@ -746,12 +760,14 @@ function buildChain(seed, overrides, maxMonths) {
 
     // Step 9: Compute surplus
     const totalDebtPayment = monthDebts.reduce(function(s, d) { return s + d.payment; }, 0);
-    const surplus = monthIncome - totalBills - totalDebtPayment;
+    const surplus = monthIncome + extraIncome - totalBills - totalDebtPayment;
     const cumInterest = prev.cumulativeInterest + monthInterest;
 
     chain.push({
       month: m,
       income: monthIncome,
+      extraIncome: extraIncome,
+      extraNote: extraNote,
       activeBills: monthBills,
       totalBills: totalBills,
       debts: monthDebts,
@@ -1697,6 +1713,9 @@ function openMonthEdit(month) {
   document.getElementById('edit-month-strategy').value = ovr.strategy || '';
   document.getElementById('edit-month-keep').value = ovr.keep !== undefined ? ovr.keep : '';
 
+  document.getElementById('edit-month-extra').value = ovr.extraIncome || '';
+  document.getElementById('edit-month-extra-note').value = ovr.extraNote || '';
+
   const container = document.getElementById('edit-month-debts');
   container.innerHTML = '';
   node.debts.forEach(function(d) {
@@ -1731,6 +1750,9 @@ function saveMonthOverride() {
   const keepVal = document.getElementById('edit-month-keep').value;
   const keepNum = parseFloat(keepVal);
   if (!isNaN(keepNum) && keepVal !== '') ovr.keep = keepNum;
+
+  const extraVal = parseFloat(document.getElementById('edit-month-extra').value);
+  if (!isNaN(extraVal) && extraVal > 0) { ovr.extraIncome = extraVal; ovr.extraNote = document.getElementById('edit-month-extra-note').value.trim().slice(0, 40); }
 
   const debtInputs = document.querySelectorAll('.edit-debt-payment');
   const debtOvrs = {};
