@@ -1245,7 +1245,7 @@ function renderChart() {
   if (myChart) {
     myChart.data.labels = labels;
     myChart.data.datasets = datasets;
-    myChart.update('none');
+    myChart.update();
   } else {
     myChart = new Chart(document.getElementById('chart'), {
       type: 'line', data: { labels: labels, datasets: datasets },
@@ -1273,6 +1273,7 @@ function renderChart() {
             const hint = document.getElementById('chart-hint');
             if (hint) hint.style.display = 'none';
             renderBreakdown();
+            myChart.update();
           }
         }
       },
@@ -1296,7 +1297,7 @@ function renderChart() {
           ctx.restore();
           // Month label at top
           ctx.save();
-          ctx.fillStyle = 'var(--muted2)';
+          ctx.fillStyle = 'rgba(136,136,160,0.8)';
           ctx.font = '9px JetBrains Mono';
           ctx.textAlign = 'center';
           ctx.fillText('m' + detailMonth, x, yAxis.top - 4);
