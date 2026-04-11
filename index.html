@@ -445,7 +445,7 @@ input.inline-num:focus{border-color:var(--accent);}
     <div class="modal-field"><label>Name</label><input type="text" id="new-bill-name" placeholder="e.g. Rent, Netflix"></div>
     <div class="modal-field"><label>Monthly amount ($)</label><input type="number" id="new-bill-amount" placeholder="0.00" min="0" step="0.01"></div>
     <div class="modal-field">
-      <label>Drops off at month (optional)</label>
+      <label>Last active month (optional)</label>
       <input type="number" id="new-bill-dropoff" placeholder="Leave blank if permanent" min="1">
     </div>
     <div class="modal-actions">
@@ -547,9 +547,10 @@ input.inline-num:focus{border-color:var(--accent);}
 function calcMinPayment(balance, apr, type) {
   if (balance <= 0) return 0;
   if (type === 'friend') return 0;
-  if (type === 'loan') return 0; // loans use user-set payment
-  const monthly = balance * (apr / 100 / 12) + balance * 0.01;
-  return Math.max(monthly, 25);
+  if (type === 'loan') return 0;
+  const interest = balance * (apr / 100 / 12);
+  const monthly = interest + balance * 0.01;
+  return Math.min(Math.max(monthly, 25), balance + interest);
 }
 
 function buildChain(seed, overrides, maxMonths) {
@@ -714,7 +715,7 @@ function buildChain(seed, overrides, maxMonths) {
         d.paidOff = true;
       }
       // Payable check: can payment cover interest?
-      d.payable = d.payment >= d.interest || d.apr === 0;
+      d.payable = d.balanceStart <= 0.005 || (d.payment > 0 && (d.payment >= d.interest || d.apr === 0));
     });
 
     // Step 8: Handle rollover
@@ -993,8 +994,11 @@ function recalc() {
     ticksEl.appendChild(div);
   });
 
+  const oldDropLegend = document.getElementById('dropoff-legend');
+  if (oldDropLegend) oldDropLegend.remove();
   if (Object.keys(dropoffEvents).length > 0) {
     const legendDiv = document.createElement('div');
+    legendDiv.id = 'dropoff-legend';
     legendDiv.style.cssText = 'font-family:var(--mono);font-size:8px;color:var(--amber);opacity:0.5;margin-top:2px;';
     legendDiv.textContent = '\u25cf = bill drops off';
     ticksEl.parentElement.appendChild(legendDiv);
@@ -1070,7 +1074,7 @@ function recalc() {
   let deltaInterest = null;
   if (strategy !== 'current') {
     const baselineSeed = { income: inc, bills: bills, debts: debts, strategy: 'current', keepPct: 0 };
-    const baselineChain = buildChain(baselineSeed, {}, 600);
+    const baselineChain = buildChain(baselineSeed, overrides, 600);
     const baseMax = baselineChain.length - 1;
     const baseTotalInterest = baselineChain[baseMax].cumulativeInterest;
     deltaMonths = baseMax - maxMonth;
