@@ -223,7 +223,7 @@ input.inline-num:focus{border-color:var(--accent);}
     </div>
     <div class="header-actions">
       <button class="hbtn" onclick="importYaml()" title="Import YAML file">import</button>
-      <button class="hbtn" onclick="exportYaml()" title="Export YAML file">export</button>
+      <button class="hbtn" id="export-btn" onclick="exportYaml()" title="Export YAML file">export</button>
       <button class="hbtn" id="save-btn" onclick="saveToCache()" title="Save to browser">save</button>
     </div>
   </div>
@@ -633,7 +633,7 @@ function recalc(){
 }
 
 function updateExportIndicator(){
-  const btn=document.querySelector('.hbtn[onclick="exportYaml()"]');
+  const btn=document.getElementById('export-btn');
   if(!hasExported&&(bills.length>0||debts.length>0)){
     btn.style.color='var(--amber)';
     btn.title='Data has not been exported yet — export for backup';
@@ -812,6 +812,7 @@ function confirmImport(){
     bills=parsed.bills;
     debts=parsed.debts;
     document.getElementById('income-input').value=income;
+    hasExported=false;
     renderBills();renderDebts();recalc();
     closeModal('modal-import');
     saveToCache(true);
@@ -836,6 +837,7 @@ function loadExample(){
     {id:nextDebtId++,name:'Friend',type:'friend',balance:1500,apr:0,payment:200,color:'#00e096'},
   ];
   document.getElementById('income-input').value=income;
+  hasExported=false;
   renderBills();renderDebts();recalc();
   saveToCache(true);
   showToast('example data loaded','success');
