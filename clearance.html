@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'none'; img-src 'self' data:;">
 <title>Clearance — Debt Payoff Planner</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" integrity="sha384-ygbQnRFdEgMBLDvJROAmHEMbMnGFKLsGHxqAlSmMGJEB5i6SkYjy+FJsfT5sHf0T" crossorigin="anonymous" onerror="document.getElementById('chart-load-error').style.display='block'"></script><!-- TODO: verify SRI hash -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous" onerror="document.getElementById('chart-load-error').style.display='block'"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -676,7 +676,7 @@ function stateToYaml(){
     lines.push('    balance: '+d.balance);
     lines.push('    apr: '+d.apr);
     lines.push('    payment: '+d.payment);
-    lines.push("    color: '"+d.color+"'");
+    lines.push("    color: '"+safeColor(d.color)+"'");
   });
   return lines.join('\n');
 }
@@ -762,7 +762,7 @@ function parseYaml(text){
 
   // coerce types
   result.bills.forEach(function(b){b.amount=parseFloat(b.amount)||0;b.dropoff=b.dropoff?parseInt(b.dropoff):null;});
-  result.debts.forEach(function(d){d.balance=parseFloat(d.balance)||0;d.apr=parseFloat(d.apr)||0;d.payment=parseFloat(d.payment)||0;if(d.type==='friend')d.apr=0;if(!d.color||!/^#[0-9a-fA-F]{6}$/.test(d.color))d.color='#00e5ff';});
+  result.debts.forEach(function(d){d.balance=parseFloat(d.balance)||0;d.apr=parseFloat(d.apr)||0;d.payment=parseFloat(d.payment)||0;if(['cc','loan','friend'].indexOf(d.type)<0) d.type='cc';if(d.type==='friend')d.apr=0;if(!d.color||!/^#[0-9a-fA-F]{6}$/.test(d.color))d.color='#00e5ff';});
   return result;
 }
 
