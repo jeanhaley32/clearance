@@ -15,11 +15,45 @@
   --text:#e8e8f0;--muted:#606070;--muted2:#8888a0;
   --accent:#00e5ff;--accent-dim:rgba(0,229,255,0.08);
   --red:#ff4466;--red-dim:rgba(255,68,102,0.08);
-  --green:#00e096;--green-dim:rgba(0,224,150,0.08);
+  --green:#00c27a;--green-dim:rgba(0,194,122,0.08);
   --amber:#ffcc44;--amber-dim:rgba(255,204,68,0.08);
   --purple:#a78bfa;
   --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
 }
+@media(prefers-color-scheme:light){
+  :root{
+    --bg:#f4f3ef;--s1:#ffffff;--s2:#f0efe9;--s3:#e8e7e0;
+    --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+    --text:#1a1a22;--muted:#9090a0;--muted2:#6a6a80;
+    --accent:#0088cc;--accent-dim:rgba(0,136,204,0.08);
+    --red:#d42050;--red-dim:rgba(212,32,80,0.08);
+    --green:#007a52;--green-dim:rgba(0,122,82,0.08);
+    --amber:#b07800;--amber-dim:rgba(176,120,0,0.08);
+    --purple:#6d4fcf;
+  }
+}
+body.theme-light{
+  --bg:#f4f3ef;--s1:#ffffff;--s2:#f0efe9;--s3:#e8e7e0;
+  --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.13);
+  --text:#1a1a22;--muted:#9090a0;--muted2:#6a6a80;
+  --accent:#0088cc;--accent-dim:rgba(0,136,204,0.08);
+  --red:#d42050;--red-dim:rgba(212,32,80,0.08);
+  --green:#007a52;--green-dim:rgba(0,122,82,0.08);
+  --amber:#b07800;--amber-dim:rgba(176,120,0,0.08);
+  --purple:#6d4fcf;
+}
+body.theme-dark{
+  --bg:#08090c;--s1:#0e0f14;--s2:#13151c;--s3:#1a1d26;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
+  --text:#e8e8f0;--muted:#606070;--muted2:#8888a0;
+  --accent:#00e5ff;--accent-dim:rgba(0,229,255,0.08);
+  --red:#ff4466;--red-dim:rgba(255,68,102,0.08);
+  --green:#00c27a;--green-dim:rgba(0,194,122,0.08);
+  --amber:#ffcc44;--amber-dim:rgba(255,204,68,0.08);
+  --purple:#a78bfa;
+}
+.theme-toggle{background:none;border:1px solid var(--border2);border-radius:5px;color:var(--muted2);font-family:var(--mono);font-size:13px;padding:4px 10px;cursor:pointer;transition:all 0.15s;line-height:1;}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
 html,body{height:100%;}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.5;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
 
@@ -108,6 +142,17 @@ input.inline-num:focus{border-color:var(--accent);}
 .dh-amount.green{color:var(--green);}
 .dh-amount.amber{color:var(--amber);}
 .dh-sub{font-size:11px;color:var(--muted);font-family:var(--mono);}
+.dh-cell-projection{display:flex;flex-direction:column;gap:2px;}
+.dh-label-row{display:flex;align-items:center;gap:0;}
+.dh-cell-projection .dh-label{margin-bottom:0;}
+.proj-slider-wrap{margin-top:10px;}
+.proj-slider-wrap input[type=range]{width:100%;margin-bottom:4px;}
+.proj-ticks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--muted);position:relative;}
+.proj-tick{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.proj-tick-line{width:1px;height:4px;background:var(--border2);}
+.proj-tick.has-event .proj-tick-line{background:var(--amber);}
+.proj-tick.has-event span{color:var(--amber);}
+.proj-tick span{font-size:8px;}
 .metrics-row{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--border);flex-shrink:0;}
 .metric{padding:0.85rem 1.25rem;border-right:1px solid var(--border);}
 .metric:last-child{border-right:none;}
@@ -223,6 +268,7 @@ input.inline-num:focus{border-color:var(--accent);}
       </div>
     </div>
     <div class="header-actions">
+      <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark mode">☀</button>
       <button class="hbtn" onclick="importYaml()" title="Import YAML file">import</button>
       <button class="hbtn" id="export-btn" onclick="exportYaml()" title="Export YAML file">export</button>
       <button class="hbtn" id="save-btn" onclick="saveToCache()" title="Save to browser">save</button>
@@ -294,15 +340,26 @@ input.inline-num:focus{border-color:var(--accent);}
           <div class="dh-amount accent" id="d-now">$0.00</div>
           <div class="dh-sub" id="d-now-sub">—</div>
         </div>
-        <div class="dh-cell">
-          <div class="dh-label">Free per day — after dropoffs (~30d/mo)</div>
+        <div class="dh-cell dh-cell-projection">
+          <div class="dh-label-row">
+            <span class="dh-label">Free per day — month&nbsp;<span id="proj-month-label">6</span></span>
+          </div>
           <div class="dh-amount green" id="d-soon">$0.00</div>
           <div class="dh-sub" id="d-soon-sub">—</div>
+          <div class="proj-slider-wrap">
+            <input type="range" id="proj-month" min="1" max="36" step="1" value="6">
+            <div class="proj-ticks" id="proj-ticks"></div>
+          </div>
         </div>
         <div class="dh-cell">
           <div class="dh-label">Monthly surplus</div>
           <div class="dh-amount amber" id="d-surplus">$0.00</div>
-          <div class="dh-sub">after all bills + debt payments</div>
+          <div class="dh-sub" id="d-surplus-sub">right now</div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+            <div class="dh-label">Monthly surplus — month <span id="proj-surplus-label">6</span></div>
+            <div class="dh-amount" style="font-size:22px;color:var(--green);margin-bottom:3px;" id="d-surplus-proj">$0.00</div>
+            <div class="dh-sub" id="d-surplus-proj-sub">—</div>
+          </div>
         </div>
       </div>
 
@@ -464,6 +521,7 @@ function renderBills(){
         '<span class="dropoff-tag dropoff-editing" title="Click to change or clear dropoff month">'+
           '<span style="opacity:0.6">↓m</span>'+
           '<input class="dropoff-inline" type="number" value="'+b.dropoff+'" min="1" max="360" title="Drops off at this month" '+
+            'data-bill-id="'+b.id+'" '+
             'oninput="updateBillDropoff('+b.id+',this.value)" '+
             'onblur="cleanBillDropoff('+b.id+',this)">'+
           '<button class="dropoff-clear" onclick="clearBillDropoff('+b.id+')" title="Remove dropoff">×</button>'+
@@ -488,9 +546,8 @@ function clearBillDropoff(id){const b=bills.find(function(x){return x.id===id;})
 function addBillDropoff(id){
   const b=bills.find(function(x){return x.id===id;});
   if(b){b.dropoff=1;renderBills();recalc();markDirty();
-    // focus the new input
-    const items=document.querySelectorAll('.bill-item');
-    items.forEach(function(item){const inp=item.querySelector('.dropoff-inline');if(inp){const rid=parseInt(item.querySelector('.dropoff-inline').getAttribute('oninput').match(/\d+/)[0]);if(rid===id){inp.select();}}});
+    const inp=document.querySelector('.dropoff-inline[data-bill-id="'+id+'"]');
+    if(inp){inp.select();}
   }
 }
 function removeBill(id){
@@ -575,18 +632,28 @@ function recalc(){
   const inc=clampPositive(document.getElementById('income-input').value);
   income=inc;
 
-  let permBills=0,dropBills=0,earliestDropoff=Infinity;
+  let permBills=0,dropBills=0;
   bills.forEach(function(b){
-    if(b.dropoff){dropBills+=b.amount;if(b.dropoff<earliestDropoff)earliestDropoff=b.dropoff;}
+    if(b.dropoff)dropBills+=b.amount;
     else permBills+=b.amount;
   });
-  if(earliestDropoff===Infinity)earliestDropoff=null;
   const totalBillsNow=permBills+dropBills;
-  const totalBillsSoon=permBills;
+
+  // Projection month: bills still active AT that month
+  const projMonth=parseInt(document.getElementById('proj-month').value)||6;
+  let projBills=0;
+  bills.forEach(function(b){
+    if(!b.dropoff)projBills+=b.amount;
+    else if(b.dropoff>projMonth)projBills+=b.amount;
+  });
+
+  // Collect all dropoff events within projection range for tick marks
+  const dropoffEvents={};
+  bills.forEach(function(b){if(b.dropoff&&b.dropoff<=36){if(!dropoffEvents[b.dropoff])dropoffEvents[b.dropoff]=[];dropoffEvents[b.dropoff].push(b.name);}});
 
   const totalDebtPayment=debts.reduce(function(s,d){return s+d.payment;},0);
   const nowFree=inc-totalBillsNow-totalDebtPayment;
-  const soonFree=inc-totalBillsSoon-totalDebtPayment;
+  const projFree=inc-projBills-totalDebtPayment;
 
   document.getElementById('h-income').textContent=fmt(inc);
   document.getElementById('h-bills').textContent=fmt(totalBillsNow);
@@ -599,12 +666,48 @@ function recalc(){
 
   if(!hasDashboard){updateExportIndicator();return;}
 
+  // Update projection label and ticks
+  document.getElementById('proj-month-label').textContent=projMonth;
+
+  // Build tick marks at key dropoff months
+  const ticksEl=document.getElementById('proj-ticks');
+  ticksEl.innerHTML='';
+  const tickMonths=[1,6,12,18,24,36];
+  // also include any dropoff months
+  Object.keys(dropoffEvents).forEach(function(m){const n=parseInt(m);if(tickMonths.indexOf(n)===-1)tickMonths.push(n);});
+  tickMonths.sort(function(a,b){return a-b;});
+  tickMonths.forEach(function(m){
+    if(m>36)return;
+    const hasEvent=!!dropoffEvents[m];
+    const pct=((m-1)/35)*100;
+    const div=document.createElement('div');
+    div.className='proj-tick'+(hasEvent?' has-event':'');
+    div.style.position='absolute';
+    div.style.left=pct+'%';
+    div.style.transform='translateX(-50%)';
+    div.innerHTML='<div class="proj-tick-line"></div><span>'+m+'</span>';
+    ticksEl.style.position='relative';
+    ticksEl.style.height='14px';
+    ticksEl.appendChild(div);
+  });
+
+  // Dropped-off bill names at projection month
+  const droppedByProj=bills.filter(function(b){return b.dropoff&&b.dropoff<=projMonth;}).map(function(b){return b.name;});
+  const subText=droppedByProj.length>0?droppedByProj.join(', ')+' dropped':projMonth===1?'no bills dropped yet':'no bills drop by month '+projMonth;
+
   document.getElementById('d-now').textContent='$'+Math.max(0,nowFree/30).toFixed(2);
-  document.getElementById('d-soon').textContent='$'+Math.max(0,soonFree/30).toFixed(2);
+  document.getElementById('d-soon').textContent='$'+Math.max(0,projFree/30).toFixed(2);
   document.getElementById('d-now-sub').textContent=fmt(Math.max(0,nowFree))+'/mo free right now';
-  document.getElementById('d-soon-sub').textContent=(earliestDropoff?'from month '+earliestDropoff+' — ':'')+fmt(Math.max(0,soonFree))+'/mo free';
+  document.getElementById('d-soon-sub').textContent=subText;
   document.getElementById('d-surplus').textContent=fmt(Math.max(0,nowFree));
-  document.getElementById('m-bills-soon').textContent=fmt(totalBillsSoon)+'/mo';
+  document.getElementById('d-surplus-sub').textContent='after all bills + debt payments';
+  document.getElementById('proj-surplus-label').textContent=projMonth;
+  document.getElementById('d-surplus-proj').textContent=fmt(Math.max(0,projFree));
+  const surplusDelta=projFree-nowFree;
+  const deltaStr=(surplusDelta>=0?'+':'')+fmt(Math.abs(surplusDelta))+(surplusDelta>=0?' more':' less')+' than now';
+  document.getElementById('d-surplus-proj-sub').textContent=surplusDelta===0?'no change from now':deltaStr;
+  document.getElementById('d-surplus-proj').style.color=projFree>=nowFree?'var(--green)':'var(--red)';
+  document.getElementById('m-bills-soon').textContent=fmt(projBills)+'/mo';
 
   if(debts.length===0){
     document.getElementById('m-cleared').textContent='no debts';
@@ -953,6 +1056,35 @@ function confirmAddDebt(){
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 function pickColor(el){document.querySelectorAll('.color-dot').forEach(function(d){d.classList.remove('selected');});el.classList.add('selected');selectedColor=el.dataset.color;}
 
+// ─── THEME ────────────────────────────────────────────────────────────────────
+let themeState='auto';
+const themeIcons={auto:'⊙',light:'☀',dark:'☽'};
+const themeLabels={auto:'auto',light:'light',dark:'dark'};
+
+function applyTheme(state){
+  document.body.classList.remove('theme-light','theme-dark');
+  if(state==='light')document.body.classList.add('theme-light');
+  if(state==='dark')document.body.classList.add('theme-dark');
+  const btn=document.getElementById('theme-btn');
+  btn.textContent=themeIcons[state];
+  btn.title='Theme: '+themeLabels[state]+' (click to cycle)';
+}
+
+function toggleTheme(){
+  const cycle={auto:'light',light:'dark',dark:'auto'};
+  themeState=cycle[themeState];
+  applyTheme(themeState);
+  try{localStorage.setItem('clearance_theme',themeState);}catch(e){}
+}
+
+function initTheme(){
+  try{
+    const saved=localStorage.getItem('clearance_theme');
+    if(saved==='light'||saved==='dark'||saved==='auto')themeState=saved;
+  }catch(e){}
+  applyTheme(themeState);
+}
+
 // ─── KEYBOARD ─────────────────────────────────────────────────────────────────
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape')document.querySelectorAll('.modal-overlay').forEach(function(m){m.classList.remove('open');});
@@ -968,9 +1100,11 @@ document.addEventListener('keydown',function(e){
 });
 document.querySelectorAll('.modal-overlay').forEach(function(m){m.addEventListener('click',function(e){if(e.target===this)closeModal(this.id);});});
 document.getElementById('income-input').addEventListener('input',function(){income=clampPositive(this.value);markDirty();debouncedRecalc();});
+document.getElementById('proj-month').addEventListener('input',recalc);
 
 // ─── INIT ──────────────────────────────────────────────────────────────────────
 window.addEventListener('beforeunload',function(){if(dirty)autoSave();});
+initTheme();
 if(!loadFromCache()){recalc();}
 </script>
 </body>
