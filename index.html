@@ -178,6 +178,7 @@ input.inline-num:focus{border-color:var(--accent);}
 .chart-legend{display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap;flex-shrink:0;}
 .legend-item{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted2);}
 .legend-swatch{width:16px;height:2px;border-radius:1px;}
+#chart{cursor:crosshair;}
 .chart-canvas-wrap{flex:1;position:relative;min-height:0;}
 .breakdown-panel{padding:1rem;overflow-y:auto;}
 .bp-title{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.75rem;padding-bottom:6px;border-bottom:1px solid var(--border);}
@@ -369,8 +370,9 @@ input.inline-num:focus{border-color:var(--accent);}
     <div id="empty-state" class="empty-state">
       <div class="empty-state-title">No data yet</div>
       <div class="empty-state-sub">
-        Start fresh by adding bills &amp; debts in the sidebar,<br>
-        or import an existing YAML file.
+        See when you'll be debt-free, how much interest you'll pay,<br>
+        and how snowball &amp; avalanche strategies compare.<br>
+        <span style="opacity:0.5;margin-top:4px;display:inline-block;">Add bills &amp; debts in the sidebar, or import a YAML file.</span>
       </div>
       <div class="empty-actions">
         <button class="ebtn" onclick="importYaml()">import YAML</button>
@@ -421,6 +423,7 @@ input.inline-num:focus{border-color:var(--accent);}
       <div class="content-area">
         <div class="chart-panel">
           <div class="chart-legend" id="chart-legend"></div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:6px;opacity:0.5;" id="chart-hint">click chart to inspect any month</div>
           <div class="chart-canvas-wrap">
             <canvas id="chart" role="img" aria-label="Debt balances over time">Debt payoff chart.</canvas>
             <div id="chart-load-error" style="display:none;padding:2rem;text-align:center;color:var(--red);font-family:var(--mono);font-size:12px;">Chart library failed to load. Charts unavailable offline.</div>
@@ -785,6 +788,7 @@ let keepPct = 0;
 let overrides = {};
 let chain = [];
 let detailMonth = null;
+let rolloverExplained = false;
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 function fmt(n){if(isNaN(n))return '—';return '$'+Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
@@ -980,11 +984,21 @@ function recalc() {
     div.style.position = 'absolute';
     div.style.left = pct + '%';
     div.style.transform = 'translateX(-50%)';
+    if (hasEvent) {
+      div.title = dropoffEvents[m].join(', ') + ' drops off at month ' + m;
+    }
     div.innerHTML = '<div class="proj-tick-line"></div><span>' + m + '</span>';
     ticksEl.style.position = 'relative';
     ticksEl.style.height = '14px';
     ticksEl.appendChild(div);
   });
+
+  if (Object.keys(dropoffEvents).length > 0) {
+    const legendDiv = document.createElement('div');
+    legendDiv.style.cssText = 'font-family:var(--mono);font-size:8px;color:var(--amber);opacity:0.5;margin-top:2px;';
+    legendDiv.textContent = '\u25cf = bill drops off';
+    ticksEl.parentElement.appendChild(legendDiv);
+  }
 
   // Hero values
   const nowFree = nowNode.surplus;
@@ -1007,10 +1021,21 @@ function recalc() {
   document.getElementById('m-bills-soon').textContent = fmt(projNode.totalBills) + '/mo';
 
   // Warning bar — check for unpayable debts across chain
-  const hasWarn = chain.some(function(node) {
-    return node.debts.some(function(d) { return !d.payable && d.balanceStart > 0.005; });
+  const unpayableNames = [];
+  chain.forEach(function(node) {
+    node.debts.forEach(function(d) {
+      if (!d.payable && d.balanceStart > 0.005 && unpayableNames.indexOf(d.name) === -1) {
+        unpayableNames.push(d.name);
+      }
+    });
   });
-  document.getElementById('warn-bar').style.display = hasWarn ? 'block' : 'none';
+  const warnBar = document.getElementById('warn-bar');
+  if (unpayableNames.length > 0) {
+    warnBar.textContent = 'Payment too low to cover interest on ' + unpayableNames.join(', ') + ' \u2014 increase monthly payments.';
+    warnBar.style.display = 'block';
+  } else {
+    warnBar.style.display = 'none';
+  }
 
   if (debts.length === 0) {
     document.getElementById('m-cleared').textContent = 'no debts';
@@ -1053,9 +1078,9 @@ function recalc() {
   }
 
   document.getElementById('m-cleared').innerHTML = fmtMo(clearedMonth || maxMonth) +
-    (deltaMonths !== null && deltaMonths > 0 ? ' <span style="color:var(--green);font-size:12px;">(-' + deltaMonths + 'mo)</span>' : '');
+    (deltaMonths !== null && deltaMonths > 0 ? ' <span style="color:var(--green);font-size:12px;">(-' + deltaMonths + 'mo vs current)</span>' : '');
   document.getElementById('m-interest').innerHTML = fmt(totalInterest) +
-    (deltaInterest !== null && deltaInterest > 0 ? ' <span style="color:var(--green);font-size:12px;">(-' + fmt(deltaInterest) + ')</span>' : '');
+    (deltaInterest !== null && deltaInterest > 0 ? ' <span style="color:var(--green);font-size:12px;">(-' + fmt(deltaInterest) + ' saved)</span>' : '');
   document.getElementById('m-total-paid').textContent = fmt(totalPaidOut);
   document.getElementById('m-monthly-debt').textContent = fmt(totalDebtPayment);
 
@@ -1094,11 +1119,25 @@ function renderBreakdown() {
       blist.appendChild(card);
     });
 
+    // Contextual date
+    const contextDiv = document.createElement('div');
+    contextDiv.style.cssText = 'font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.6;';
+    const dateEst = new Date();
+    dateEst.setMonth(dateEst.getMonth() + detailMonth);
+    const monthName = dateEst.toLocaleDateString(undefined, {month:'short', year:'numeric'});
+    contextDiv.textContent = 'Projected snapshot for ~' + monthName;
+    blist.insertBefore(contextDiv, blist.firstChild);
+
     // Rollovers
     node.rollovers.forEach(function(r) {
       const div = document.createElement('div');
       div.style.cssText = 'font-family:var(--mono);font-size:10px;color:var(--green);padding:6px 0;border-top:1px solid var(--border);margin-top:4px;';
-      div.textContent = fmt(r.amount) + ' rolls from ' + r.from + ' \u2192 ' + r.to;
+      let text = fmt(r.amount) + ' rolls from ' + r.from + ' \u2192 ' + r.to;
+      if (!rolloverExplained) {
+        text += ' (freed payment redirected to next debt)';
+        rolloverExplained = true;
+      }
+      div.textContent = text;
       blist.appendChild(div);
     });
 
@@ -1111,14 +1150,19 @@ function renderBreakdown() {
     // Edit button
     const editBtn = document.createElement('button');
     editBtn.className = 'add-btn';
-    editBtn.textContent = 'edit this month';
+    editBtn.textContent = 'override this month';
     editBtn.style.marginTop = '8px';
     editBtn.onclick = function() { openMonthEdit(detailMonth); };
     blist.appendChild(editBtn);
 
+    const editHint = document.createElement('div');
+    editHint.style.cssText = 'font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;opacity:0.5;';
+    editHint.textContent = 'adjust income, strategy, or payments for this month';
+    blist.appendChild(editHint);
+
   } else {
     // Overview mode — existing behavior
-    bpTitle.textContent = 'Per account';
+    bpTitle.innerHTML = 'Per account <span style="float:right;opacity:0.4;font-style:italic;text-transform:none;letter-spacing:0;">slide to explore →</span>';
 
     if (chain.length < 2) return;
 
@@ -1185,6 +1229,15 @@ function renderChart() {
     legend.appendChild(item);
   });
 
+  const hasUnpayable = datasets.some(function(ds) { return ds.borderDash && ds.borderDash.length > 0; });
+  if (hasUnpayable) {
+    const note = document.createElement('div');
+    note.className = 'legend-item';
+    note.style.opacity = '0.5';
+    note.innerHTML = '<div class="legend-swatch" style="background:var(--muted);border-top:1px dashed var(--muted);height:0;"></div><span style="color:var(--red);font-size:9px;">dashed = won\'t pay off</span>';
+    legend.appendChild(note);
+  }
+
   if (myChart) {
     myChart.data.labels = labels;
     myChart.data.datasets = datasets;
@@ -1213,10 +1266,39 @@ function renderChart() {
             detailMonth = points[0].index;
             const slider = document.getElementById('proj-month');
             if (detailMonth <= 36) slider.value = detailMonth;
+            const hint = document.getElementById('chart-hint');
+            if (hint) hint.style.display = 'none';
             renderBreakdown();
           }
         }
-      }
+      },
+      plugins: [{
+        id: 'monthIndicator',
+        afterDraw: function(chart) {
+          if (detailMonth === null || detailMonth === undefined) return;
+          const meta = chart.getDatasetMeta(0);
+          if (!meta || !meta.data[detailMonth]) return;
+          const x = meta.data[detailMonth].x;
+          const ctx = chart.ctx;
+          const yAxis = chart.scales.y;
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(x, yAxis.top);
+          ctx.lineTo(x, yAxis.bottom);
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.restore();
+          // Month label at top
+          ctx.save();
+          ctx.fillStyle = 'var(--muted2)';
+          ctx.font = '9px JetBrains Mono';
+          ctx.textAlign = 'center';
+          ctx.fillText('m' + detailMonth, x, yAxis.top - 4);
+          ctx.restore();
+        }
+      }]
     });
   }
 }
@@ -1559,9 +1641,9 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 function pickColor(el){document.querySelectorAll('.color-dot').forEach(function(d){d.classList.remove('selected');});el.classList.add('selected');selectedColor=el.dataset.color;}
 
 const strategyDescs = {
-  current: 'No reallocation — use your set payments',
-  snowball: 'Pay off smallest balance first — quick wins build momentum',
-  avalanche: 'Pay off highest interest first — saves the most money'
+  current: 'Each debt keeps its set monthly payment. No freed money is redirected.',
+  snowball: 'Minimums on all debts, extra attacks the smallest balance. When it\'s gone, its payment rolls to the next smallest.',
+  avalanche: 'Minimums on all debts, extra attacks the highest APR. Mathematically optimal — saves the most in interest.'
 };
 
 function onStrategyChange() {
