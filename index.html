@@ -91,6 +91,17 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13
 .add-btn{background:none;border:1px dashed var(--border2);color:var(--muted2);border-radius:5px;padding:5px 10px;font-family:var(--mono);font-size:10px;cursor:pointer;transition:all 0.15s;width:100%;margin-top:6px;letter-spacing:0.04em;}
 .add-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
 
+/* STRATEGY */
+.strategy-section{padding:1rem;border-bottom:1px solid var(--border);}
+.strategy-section .ps-title{margin-bottom:8px;}
+.strategy-select{width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 8px;outline:none;margin-bottom:4px;}
+.strategy-select:focus{border-color:var(--accent);}
+.strategy-desc{font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:10px;line-height:1.5;}
+.keep-row{display:flex;align-items:center;gap:8px;margin-top:6px;}
+.keep-row label{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;}
+.keep-row input{width:60px;background:var(--s3);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:12px;padding:4px 8px;text-align:right;outline:none;}
+.keep-row input:focus{border-color:var(--accent);}
+
 /* INCOME */
 .income-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;}
 .income-label{flex:1;font-size:12px;color:var(--text);}
@@ -304,6 +315,22 @@ input.inline-num:focus{border-color:var(--accent);}
 
     <!-- DEBTS TAB -->
     <div class="tab-panel" id="tab-debts">
+      <div class="strategy-section" id="strategy-section">
+        <div class="ps-title">Strategy</div>
+        <select class="strategy-select" id="strategy-select" onchange="onStrategyChange()">
+          <option value="current">Current plan</option>
+          <option value="snowball">Snowball</option>
+          <option value="avalanche">Avalanche</option>
+        </select>
+        <div class="strategy-desc" id="strategy-desc">No reallocation — use your set payments</div>
+        <div id="keep-controls" style="display:none;">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;">When a debt pays off, keep for savings</div>
+          <div class="keep-row">
+            <input type="number" id="keep-pct" value="0" min="0" max="100" step="5" oninput="onKeepChange()">
+            <label>%</label>
+          </div>
+        </div>
+      </div>
       <div class="panel-section">
         <div class="ps-header">
           <span class="ps-title">Debt accounts</span>
@@ -471,6 +498,9 @@ let myChart = null;
 let saveTimeout = null;
 let dirty = false;
 let hasExported = false;
+let strategy = 'current';
+let keepPct = 0;
+let overrides = {};
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 function fmt(n){if(isNaN(n))return '—';return '$'+Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
@@ -817,7 +847,7 @@ function autoSave(){
 
 // ─── LOCALSTORAGE ────────────────────────────────────────────────────────────
 function saveToCache(silent){
-  const state={income:income,bills:bills,debts:debts,nextBillId:nextBillId,nextDebtId:nextDebtId,hasExported:hasExported,savedAt:new Date().toISOString()};
+  const state={income:income,bills:bills,debts:debts,nextBillId:nextBillId,nextDebtId:nextDebtId,hasExported:hasExported,strategy:strategy,keepPct:keepPct,overrides:overrides,savedAt:new Date().toISOString()};
   try{
     localStorage.setItem('clearance_state',JSON.stringify(state));
     dirty=false;
@@ -841,6 +871,13 @@ function loadFromCache(){
     nextBillId=state.nextBillId||Math.max.apply(null,bills.map(function(b){return b.id;}).concat([0]))+1;
     nextDebtId=state.nextDebtId||Math.max.apply(null,debts.map(function(d){return d.id;}).concat([0]))+1;
     hasExported=state.hasExported||false;
+    strategy=state.strategy||'current';
+    keepPct=state.keepPct||0;
+    overrides=state.overrides||{};
+    document.getElementById('strategy-select').value=strategy;
+    document.getElementById('strategy-desc').textContent=strategyDescs[strategy]||'';
+    document.getElementById('keep-controls').style.display=strategy==='current'?'none':'';
+    document.getElementById('keep-pct').value=keepPct;
     document.getElementById('income-input').value=income;
     renderBills();renderDebts();recalc();
     updateExportIndicator();
@@ -854,6 +891,8 @@ function loadFromCache(){
 function stateToYaml(){
   const lines=['# Clearance — debt payoff planner','# exported '+new Date().toISOString(),'','version: 1',''];
   lines.push('income: '+income);
+  if (strategy !== 'current') lines.push('strategy: ' + strategy);
+  if (keepPct > 0) lines.push('keepPct: ' + keepPct);
   lines.push('');
   lines.push('bills:');
   if(bills.length===0)lines.push('  []');
@@ -907,7 +946,7 @@ function loadYamlFile(input){
 
 function parseYaml(text){
   // Minimal hand-rolled YAML parser for our specific schema
-  const result={income:0,bills:[],debts:[]};
+  const result={income:0,bills:[],debts:[],strategy:'current',keepPct:0};
   let skipped=0;
   const lines=text.split('\n');
   let section=null;
@@ -937,6 +976,8 @@ function parseYaml(text){
       if(!m){skipped++;return;}
       const key=m[1],val=m[2].trim();
       if(key==='income'){result.income=parseFloat(val)||0;}
+      else if(key==='strategy'){result.strategy=val;}
+      else if(key==='keepPct'){result.keepPct=parseFloat(val)||0;}
       else if(key==='bills'){section='bills';current=null;}
       else if(key==='debts'){section='debts';current=null;}
     } else if(indent===2){
@@ -980,6 +1021,13 @@ function confirmImport(){
     income=parsed.income;
     bills=parsed.bills;
     debts=parsed.debts;
+    strategy=parsed.strategy||'current';
+    keepPct=parsed.keepPct||0;
+    overrides={};
+    document.getElementById('strategy-select').value=strategy;
+    document.getElementById('strategy-desc').textContent=strategyDescs[strategy]||'';
+    document.getElementById('keep-controls').style.display=strategy==='current'?'none':'';
+    document.getElementById('keep-pct').value=keepPct;
     document.getElementById('income-input').value=income;
     hasExported=false;
     renderBills();renderDebts();recalc();
@@ -1071,6 +1119,27 @@ function confirmAddDebt(){
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 function pickColor(el){document.querySelectorAll('.color-dot').forEach(function(d){d.classList.remove('selected');});el.classList.add('selected');selectedColor=el.dataset.color;}
+
+const strategyDescs = {
+  current: 'No reallocation — use your set payments',
+  snowball: 'Pay off smallest balance first — quick wins build momentum',
+  avalanche: 'Pay off highest interest first — saves the most money'
+};
+
+function onStrategyChange() {
+  strategy = document.getElementById('strategy-select').value;
+  document.getElementById('strategy-desc').textContent = strategyDescs[strategy];
+  document.getElementById('keep-controls').style.display = strategy === 'current' ? 'none' : '';
+  markDirty();
+  recalc();
+}
+
+function onKeepChange() {
+  keepPct = clampPositive(document.getElementById('keep-pct').value);
+  if (keepPct > 100) keepPct = 100;
+  markDirty();
+  recalc();
+}
 
 // ─── THEME ────────────────────────────────────────────────────────────────────
 let themeState='auto';
