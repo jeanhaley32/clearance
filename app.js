@@ -18,7 +18,7 @@ let chain = [];
 let detailMonth = null;
 let rolloverExplained = false;
 let inlineEditHintShown = false;
-let debtHidden = {};
+let debtFocused = {}; // { debtId: true } — when empty, show all; when set, show only focused
 let startDate = null; // Date object, first of the start month
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────

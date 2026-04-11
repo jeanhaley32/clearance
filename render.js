@@ -66,12 +66,15 @@ function renderDebts(){
     const badgeClass=d.type==='cc'?'badge-cc':d.type==='friend'?'badge-friend':'badge-loan';
     const div=document.createElement('div');
     div.className='debt-item';
-    const isVisible=!debtHidden[d.id];
+    const hasFocus=Object.keys(debtFocused).length>0;
+    const isFocused=!!debtFocused[d.id];
+    const dimmed=hasFocus&&!isFocused;
+    div.style.opacity=dimmed?'0.4':'1';
+    div.style.transition='opacity 0.15s';
     div.innerHTML=
       '<div class="debt-item-header">'+
-        '<input type="checkbox" '+(isVisible?'checked':'')+' onchange="toggleDebtVisibility('+d.id+')" title="Show on chart" style="accent-color:'+safeColor(d.color)+';cursor:pointer;margin-right:2px;">'+
-        '<div style="width:10px;height:10px;border-radius:50%;background:'+safeColor(d.color)+';flex-shrink:0;'+(isVisible?'':'opacity:0.3;')+'"></div>'+
-        '<input class="debt-name" type="text" value="'+escHtml(d.name)+'" placeholder="Account name" oninput="updateDebtField('+d.id+',\'name\',this.value)" style="'+(isVisible?'':'opacity:0.4;')+'">'+
+        '<div onclick="toggleDebtFocus('+d.id+',event)" title="Click to focus on chart" style="width:12px;height:12px;border-radius:50%;background:'+safeColor(d.color)+';flex-shrink:0;cursor:pointer;border:2px solid '+(isFocused?'white':'transparent')+';transition:border-color 0.15s;"></div>'+
+        '<input class="debt-name" type="text" value="'+escHtml(d.name)+'" placeholder="Account name" oninput="updateDebtField('+d.id+',\'name\',this.value)">'+
         '<span class="debt-type-badge '+badgeClass+'">'+typeLabel+'</span>'+
         '<button class="remove-btn" onclick="removeDebt('+d.id+')">×</button>'+
       '</div>'+
@@ -86,11 +89,23 @@ function renderDebts(){
   });
   document.getElementById('debts-total').textContent=fmt(total)+' total';
 }
-function toggleDebtVisibility(id){
-  if(debtHidden[id])delete debtHidden[id];
-  else debtHidden[id]=true;
+function toggleDebtFocus(id,evt){
+  if(evt&&evt.shiftKey){
+    // Shift-click: toggle this debt in/out of focus set
+    if(debtFocused[id])delete debtFocused[id];
+    else debtFocused[id]=true;
+  }else{
+    // Regular click: solo this debt, or clear if already solo
+    if(debtFocused[id]&&Object.keys(debtFocused).length===1){
+      debtFocused={};
+    }else{
+      debtFocused={};
+      debtFocused[id]=true;
+    }
+  }
   renderDebts();
-  if(myChart)renderChart();
+  renderChart();
+  renderBreakdown();
 }
 function updateDebtField(id,field,val){
   if(['name','balance','apr','payment'].indexOf(field)<0)return;
@@ -316,6 +331,7 @@ function renderBreakdown() {
   const blist = document.getElementById('breakdown-list');
   const bpTitle = document.querySelector('.bp-title');
   blist.innerHTML = '';
+  const hasFocusB = Object.keys(debtFocused).length > 0;
 
   if (detailMonth !== null && chain[detailMonth]) {
     // Month detail mode
@@ -344,7 +360,8 @@ function renderBreakdown() {
 
     // Debt cards with inline-editable payments
     let firstEditableHinted = false;
-    node.debts.forEach(function(d) {
+    const detailDebts = hasFocusB ? node.debts.filter(function(d){return !!debtFocused[d.id];}) : node.debts;
+    detailDebts.forEach(function(d) {
       if (d.balanceStart <= 0 && !d.paidOff) return; // skip long-dead debts
       const card = document.createElement('div');
       card.className = 'debt-summary-card';
@@ -512,7 +529,8 @@ function renderBreakdown() {
 
     if (chain.length < 2) return;
 
-    debts.forEach(function(d) {
+    const overviewDebts = hasFocusB ? debts.filter(function(d){return !!debtFocused[d.id];}) : debts;
+    overviewDebts.forEach(function(d) {
       // Find payoff month for this debt
       let payoffMonth = null;
       let totalInterestForDebt = 0;
@@ -548,7 +566,8 @@ function renderChart() {
   const labels = [];
   for (let i = 0; i <= maxMonth; i++) labels.push(i === 0 ? 'Now' : fmtDateShort(i));
 
-  const visibleDebts = debts.filter(function(d) { return !debtHidden[d.id]; });
+  const hasFocus = Object.keys(debtFocused).length > 0;
+  const visibleDebts = hasFocus ? debts.filter(function(d) { return !!debtFocused[d.id]; }) : debts;
   const datasets = visibleDebts.map(function(d) {
     const chartData = [];
     for (let i = 0; i < chain.length; i++) {
