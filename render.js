@@ -147,10 +147,12 @@ function recalc() {
   const maxMonth = chain.length - 1;
 
   // Header stats
+  const focusActive = Object.keys(debtFocused).length > 0;
+  const focusDebts = focusActive ? debts.filter(function(d){return !!debtFocused[d.id];}) : debts;
   document.getElementById('h-income').textContent = fmt(inc);
   const totalBillsNow = chain[0].totalBills;
   document.getElementById('h-bills').textContent = fmt(totalBillsNow);
-  document.getElementById('h-debt').textContent = fmt(debts.reduce(function(s, d) { return s + d.balance; }, 0));
+  document.getElementById('h-debt').textContent = fmt(focusDebts.reduce(function(s, d) { return s + d.balance; }, 0));
 
   // Dashboard visibility
   const hasDashboard = debts.length > 0 || bills.length > 0 || inc > 0;
@@ -259,20 +261,44 @@ function recalc() {
     return;
   }
 
-  // Find payoff month per debt and compute totals from chain
+  // Find payoff month per debt and compute totals — scoped to focused debts
   const lastNode = chain[maxMonth];
-  const allCleared = debts.every(function(d) {
-    const ld = lastNode.debts.find(function(x) { return x.id === d.id; });
-    return ld && ld.balanceEnd <= 0.005;
-  });
-  const clearedMonth = allCleared ? maxMonth : null;
-  const totalInterest = lastNode.cumulativeInterest;
-  const totalDebtPayment = chain[1] ? chain[1].totalDebtPayment : 0;
+  const focusIds = focusActive ? focusDebts.map(function(d){return d.id;}) : null;
 
-  // Compute totalPaidOut: sum of all payments made across the chain
+  // Per-debt payoff month (latest among focused debts)
+  let clearedMonth = 0;
+  let allCleared = true;
+  let totalInterest = 0;
   let totalPaidOut = 0;
-  for (let i = 1; i < chain.length; i++) {
-    totalPaidOut += chain[i].totalDebtPayment;
+  let totalDebtPayment = 0;
+
+  focusDebts.forEach(function(d) {
+    let debtPayoff = null;
+    let debtInterest = 0;
+    let debtPaid = 0;
+    for (let i = 1; i < chain.length; i++) {
+      const cd = chain[i].debts.find(function(x) { return x.id === d.id; });
+      if (cd) {
+        debtInterest += cd.interest;
+        debtPaid += cd.payment;
+        if (cd.paidOff && debtPayoff === null) debtPayoff = i;
+      }
+    }
+    if (debtPayoff !== null) {
+      if (debtPayoff > clearedMonth) clearedMonth = debtPayoff;
+    } else {
+      allCleared = false;
+    }
+    totalInterest += debtInterest;
+    totalPaidOut += debtPaid;
+  });
+
+  if (!allCleared) clearedMonth = null;
+  if (chain[1]) {
+    focusDebts.forEach(function(d) {
+      const cd = chain[1].debts.find(function(x) { return x.id === d.id; });
+      if (cd) totalDebtPayment += cd.payment;
+    });
   }
 
   // Strategy comparison deltas
@@ -281,18 +307,35 @@ function recalc() {
   if (strategy !== 'current') {
     const baselineSeed = { income: inc, bills: bills, debts: debts, strategy: 'current', keepPct: 0 };
     const baselineChain = buildChain(baselineSeed, overrides, 600);
-    const baseMax = baselineChain.length - 1;
-    const baseTotalInterest = baselineChain[baseMax].cumulativeInterest;
-    deltaMonths = baseMax - maxMonth;
+    // Compute baseline totals for same focused debts
+    let baseCleared = 0;
+    let baseAllCleared = true;
+    let baseTotalInterest = 0;
+    focusDebts.forEach(function(d) {
+      let payoff = null;
+      let interest = 0;
+      for (let i = 1; i < baselineChain.length; i++) {
+        const cd = baselineChain[i].debts.find(function(x) { return x.id === d.id; });
+        if (cd) {
+          interest += cd.interest;
+          if (cd.paidOff && payoff === null) payoff = i;
+        }
+      }
+      if (payoff !== null) { if (payoff > baseCleared) baseCleared = payoff; }
+      else baseAllCleared = false;
+      baseTotalInterest += interest;
+    });
+    if (baseAllCleared && allCleared) deltaMonths = baseCleared - clearedMonth;
     deltaInterest = baseTotalInterest - totalInterest;
   }
 
+  const focusLabel = focusActive ? ' <span style="color:var(--accent);font-size:9px;opacity:0.6;">(' + focusDebts.map(function(d){return d.name;}).join(', ') + ')</span>' : '';
   document.getElementById('m-cleared').innerHTML = fmtMo(clearedMonth || maxMonth) +
     (deltaMonths !== null && deltaMonths > 0 ? ' <span style="color:var(--green);font-size:12px;">(-' + deltaMonths + 'mo vs current)</span>' : '');
   document.getElementById('m-interest').innerHTML = fmt(totalInterest) +
     (deltaInterest !== null && deltaInterest > 0 ? ' <span style="color:var(--green);font-size:12px;">(-' + fmt(deltaInterest) + ' saved)</span>' : '');
   document.getElementById('m-total-paid').textContent = fmt(totalPaidOut);
-  document.getElementById('m-monthly-debt').textContent = fmt(totalDebtPayment);
+  document.getElementById('m-monthly-debt').innerHTML = fmt(totalDebtPayment) + focusLabel;
 
   // Breakdown panel
   renderBreakdown();
