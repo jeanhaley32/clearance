@@ -236,7 +236,7 @@ input.inline-num:focus{border-color:var(--accent);}
 /* RESPONSIVE */
 @media(max-width:800px){
   .app{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
-  .sidebar{border-right:none;border-bottom:1px solid var(--border);max-height:40vh;overflow-y:auto;}
+  .sidebar{border-right:none;border-bottom:1px solid var(--border);max-height:35vh;overflow-y:auto;}
   .header{flex-wrap:wrap;height:auto;padding:0.75rem 1rem;gap:0.5rem;}
   .header-stats{gap:1rem;}
   .hstat-val{font-size:13px;}
@@ -246,16 +246,35 @@ input.inline-num:focus{border-color:var(--accent);}
   .metrics-row{grid-template-columns:repeat(3,1fr);}
   .metric{padding:0.6rem 0.75rem;}
   .m-val{font-size:14px;}
-  .content-area{grid-template-columns:1fr;grid-template-rows:1fr auto;}
-  .chart-panel{border-right:none;border-bottom:1px solid var(--border);min-height:250px;}
-  .breakdown-panel{max-height:200px;overflow-y:auto;}
+  .content-area{grid-template-columns:1fr;grid-template-rows:auto auto;}
+  .chart-panel{border-right:none;border-bottom:1px solid var(--border);min-height:220px;max-height:40vh;}
+  .breakdown-panel{max-height:none;overflow-y:auto;padding-bottom:2rem;}
   body{overflow:auto;height:auto;}
+  .bill-item,.debt-item{padding:8px 10px;}
+  .remove-btn{font-size:18px;padding:4px 6px;}
+  .add-btn{padding:8px 10px;font-size:11px;}
+  .strategy-section{padding:0.75rem;}
+  .proj-slider-wrap input[type=range]{height:28px;}
+  .tab-btn{padding:12px 10px;font-size:11px;}
 }
 @media(max-width:480px){
   .header-stats{display:none;}
+  .header-actions{gap:4px;}
+  .hbtn{padding:6px 8px;font-size:9px;}
+  .theme-toggle{font-size:14px;padding:6px 8px;}
   .metrics-row{grid-template-columns:repeat(2,1fr);}
   .daily-hero{grid-template-columns:1fr;}
+  .dh-amount{font-size:20px;}
+  .dh-cell{padding:0.6rem 0.75rem;}
   .modal{width:95vw;padding:1rem;}
+  .modal h3{font-size:13px;}
+  .modal-field input,.modal-field select{font-size:14px;padding:10px 12px;}
+  .btn-primary,.btn-secondary{padding:10px 16px;font-size:13px;}
+  .chart-panel{min-height:180px;max-height:35vh;padding:0.75rem;}
+  .sidebar{max-height:30vh;}
+  .debt-summary-card{padding:8px 10px;}
+  .dsc-name{font-size:11px;}
+  .proj-tick span{font-size:7px;}
 }
 </style>
 </head>
