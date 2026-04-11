@@ -533,6 +533,29 @@ function initTheme(){
   applyTheme(themeState);
 }
 
+// ─── VIEW TOGGLE ──────────────────────────────────────────────────────────
+let currentView = 'dashboard';
+
+function switchView(view) {
+  currentView = view;
+  document.getElementById('view-dashboard-btn').classList.toggle('active', view === 'dashboard');
+  document.getElementById('view-diary-btn').classList.toggle('active', view === 'diary');
+
+  // Show/hide views
+  const app = document.querySelector('.app');
+  const diary = document.getElementById('diary-view');
+
+  if (view === 'diary') {
+    app.style.display = 'none';
+    diary.classList.add('active');
+    if (!diaryDate) diaryDate = diaryToday();
+    renderDiary();
+  } else {
+    app.style.display = '';
+    diary.classList.remove('active');
+  }
+}
+
 // ─── KEYBOARD ─────────────────────────────────────────────────────────────────
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape')document.querySelectorAll('.modal-overlay').forEach(function(m){m.classList.remove('open');});
