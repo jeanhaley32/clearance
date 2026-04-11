@@ -1442,7 +1442,14 @@ function loadExample(){
     {id:nextDebtId++,name:'Friend',type:'friend',balance:1500,apr:0,payment:200,color:'#00e096'},
   ];
   document.getElementById('income-input').value=income;
+  strategy='avalanche';
+  keepPct=0;
+  overrides={};
   hasExported=false;
+  document.getElementById('strategy-select').value=strategy;
+  document.getElementById('strategy-desc').textContent=strategyDescs[strategy];
+  document.getElementById('keep-controls').style.display='';
+  document.getElementById('keep-pct').value=keepPct;
   renderBills();renderDebts();recalc();
   saveToCache(true);
   showToast('example data loaded','success');
