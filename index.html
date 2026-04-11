@@ -1097,6 +1097,30 @@ function recalc() {
   updateExportIndicator();
 }
 
+function updateProjection() {
+  if (chain.length < 2) return;
+  const maxMonth = chain.length - 1;
+  const projMonth = Math.min(parseInt(document.getElementById('proj-month').value) || 6, maxMonth);
+  const projNode = chain[projMonth] || chain[maxMonth];
+  const nowNode = chain[0];
+  const nowFree = nowNode.surplus;
+  const projFree = projNode.surplus;
+
+  document.getElementById('proj-month-label').textContent = projMonth;
+  const droppedByProj = bills.filter(function(b) { return b.dropoff && b.dropoff <= projMonth; }).map(function(b) { return b.name; });
+  const subText = droppedByProj.length > 0 ? droppedByProj.join(', ') + ' dropped' : projMonth === 1 ? 'no bills dropped yet' : 'no bills drop by month ' + projMonth;
+
+  document.getElementById('d-soon').textContent = '$' + Math.max(0, projFree / 30).toFixed(2);
+  document.getElementById('d-soon-sub').textContent = subText;
+  document.getElementById('proj-surplus-label').textContent = projMonth;
+  document.getElementById('d-surplus-proj').textContent = fmt(Math.max(0, projFree));
+  const surplusDelta = projFree - nowFree;
+  const deltaStr = (surplusDelta >= 0 ? '+' : '') + fmt(Math.abs(surplusDelta)) + (surplusDelta >= 0 ? ' more' : ' less') + ' than now';
+  document.getElementById('d-surplus-proj-sub').textContent = surplusDelta === 0 ? 'no change from now' : deltaStr;
+  document.getElementById('d-surplus-proj').style.color = projFree >= nowFree ? 'var(--green)' : 'var(--red)';
+  document.getElementById('m-bills-soon').textContent = fmt(projNode.totalBills) + '/mo';
+}
+
 function renderBreakdown() {
   const blist = document.getElementById('breakdown-list');
   const bpTitle = document.querySelector('.bp-title');
@@ -1793,7 +1817,11 @@ document.addEventListener('keydown',function(e){
 });
 document.querySelectorAll('.modal-overlay').forEach(function(m){m.addEventListener('click',function(e){if(e.target===this)closeModal(this.id);});});
 document.getElementById('income-input').addEventListener('input',function(){income=clampPositive(this.value);markDirty();debouncedRecalc();});
-document.getElementById('proj-month').addEventListener('input',function(){detailMonth=parseInt(this.value)||null;recalc();});
+document.getElementById('proj-month').addEventListener('input',function(){
+  detailMonth=parseInt(this.value)||null;
+  if(chain.length>1){updateProjection();renderBreakdown();if(myChart)myChart.update();}
+  else{recalc();}
+});
 
 // ─── INIT ──────────────────────────────────────────────────────────────────────
 window.addEventListener('beforeunload',function(){if(dirty)autoSave();});
