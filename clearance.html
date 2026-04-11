@@ -170,7 +170,7 @@ input.inline-num:focus{border-color:var(--accent);}
 
 /* TOAST */
 .toast{position:fixed;bottom:24px;right:24px;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:10px 16px;font-family:var(--mono);font-size:11px;color:var(--text);z-index:200;transform:translateY(20px);opacity:0;transition:all 0.25s;pointer-events:none;}
-.toast.show{transform:translateY(0);opacity:1;}
+.toast.show{transform:translateY(0);opacity:1;pointer-events:auto;}
 .toast.success{border-color:rgba(0,224,150,0.3);color:var(--green);}
 .toast.error{border-color:rgba(255,68,102,0.3);color:var(--red);}
 
@@ -393,7 +393,19 @@ function fmtMo(m){if(!m||m<=0)return '—';var y=Math.floor(m/12),mo=m%12;if(y==
 function pad(d,len){var o=d.slice();while(o.length<len+1)o.push(0);return o;}
 function hexToRgba(hex,a){var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return 'rgba('+r+','+g+','+b+','+a+')';}
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function showToast(msg,type){var t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(type||'');t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
+var toastTimeout=null;
+function showToast(msg,type){var t=document.getElementById('toast');if(toastTimeout)clearTimeout(toastTimeout);t.textContent=msg;t.className='toast '+(type||'');t.classList.add('show');toastTimeout=setTimeout(function(){t.classList.remove('show');},2500);}
+var undoTimeout=null;
+function showUndoToast(msg,undoFn){
+  var t=document.getElementById('toast');
+  if(toastTimeout)clearTimeout(toastTimeout);
+  if(undoTimeout)clearTimeout(undoTimeout);
+  t.innerHTML=escHtml(msg)+' <button onclick="this.parentElement._undoFn()" style="background:none;border:1px solid var(--accent);color:var(--accent);border-radius:4px;padding:2px 8px;margin-left:8px;cursor:pointer;font-family:var(--mono);font-size:10px;">undo</button>';
+  t._undoFn=function(){undoFn();t.classList.remove('show');if(undoTimeout)clearTimeout(undoTimeout);showToast('restored','success');};
+  t.className='toast';
+  t.classList.add('show');
+  undoTimeout=setTimeout(function(){t.classList.remove('show');},5000);
+}
 
 // ─── TABS ────────────────────────────────────────────────────────────────────
 function switchTab(tab){
@@ -447,7 +459,13 @@ function addBillDropoff(id){
     items.forEach(function(item){var inp=item.querySelector('.dropoff-inline');if(inp){var rid=parseInt(item.querySelector('.dropoff-inline').getAttribute('oninput').match(/\d+/)[0]);if(rid===id){inp.select();}}});
   }
 }
-function removeBill(id){bills=bills.filter(function(b){return b.id!==id;});renderBills();recalc();markDirty();}
+function removeBill(id){
+  var removed=bills.find(function(b){return b.id===id;});
+  if(!removed)return;
+  bills=bills.filter(function(b){return b.id!==id;});
+  renderBills();recalc();markDirty();
+  showUndoToast('Removed "'+removed.name+'"',function(){bills.push(removed);renderBills();recalc();markDirty();});
+}
 
 // ─── RENDER DEBTS ────────────────────────────────────────────────────────────
 function renderDebts(){
@@ -477,7 +495,13 @@ function renderDebts(){
   document.getElementById('debts-total').textContent=fmt(total)+' total';
 }
 function updateDebtField(id,field,val){var d=debts.find(function(x){return x.id===id;});if(d){d[field]=field==='name'?val:val;markDirty();recalc();}}
-function removeDebt(id){debts=debts.filter(function(d){return d.id!==id;});renderDebts();recalc();markDirty();}
+function removeDebt(id){
+  var removed=debts.find(function(d){return d.id===id;});
+  if(!removed)return;
+  debts=debts.filter(function(d){return d.id!==id;});
+  renderDebts();recalc();markDirty();
+  showUndoToast('Removed "'+removed.name+'"',function(){debts.push(removed);renderDebts();recalc();markDirty();});
+}
 
 // ─── CALC ────────────────────────────────────────────────────────────────────
 function calcDebt(d){
@@ -642,19 +666,19 @@ function loadFromCache(){
     income=state.income||0;
     bills=state.bills||[];
     debts=state.debts||[];
-    nextBillId=state.nextBillId||bills.length+1;
-    nextDebtId=state.nextDebtId||debts.length+1;
+    nextBillId=state.nextBillId||Math.max.apply(null,bills.map(function(b){return b.id;}).concat([0]))+1;
+    nextDebtId=state.nextDebtId||Math.max.apply(null,debts.map(function(d){return d.id;}).concat([0]))+1;
     document.getElementById('income-input').value=income;
     renderBills();renderDebts();recalc();
     var d=new Date(state.savedAt);
     showToast('restored from '+d.toLocaleDateString()+' '+d.toLocaleTimeString(),'success');
     return true;
-  }catch(e){return false;}
+  }catch(e){showToast('Could not restore saved data: '+e.message,'error');return false;}
 }
 
 // ─── YAML EXPORT ─────────────────────────────────────────────────────────────
 function stateToYaml(){
-  var lines=['# Clearance — debt payoff planner','# exported '+new Date().toISOString(),''];
+  var lines=['# Clearance — debt payoff planner','# exported '+new Date().toISOString(),'','version: 1',''];
   lines.push('income: '+income);
   lines.push('');
   lines.push('bills:');
@@ -708,6 +732,7 @@ function loadYamlFile(input){
 function parseYaml(text){
   // Minimal hand-rolled YAML parser for our specific schema
   var result={income:0,bills:[],debts:[]};
+  var skipped=0;
   var lines=text.split('\n');
   var section=null;
   var current=null;
@@ -730,7 +755,7 @@ function parseYaml(text){
 
     if(indent===0){
       var m=line.match(/^(\w+):\s*(.*)/);
-      if(!m)return;
+      if(!m){skipped++;return;}
       var key=m[1],val=m[2].trim();
       if(key==='income'){result.income=parseFloat(val)||0;}
       else if(key==='bills'){section='bills';current=null;}
@@ -743,20 +768,23 @@ function parseYaml(text){
         if(km){
           if(section==='bills'){current={id:nextBillId++,name:'',amount:0,dropoff:null};result.bills.push(current);current[km[1]]=parseVal(km[2]);}
           else if(section==='debts'){current={id:nextDebtId++,name:'',type:'cc',balance:0,apr:0,payment:0,color:'#00e5ff'};result.debts.push(current);current[km[1]]=parseVal(km[2]);}
-        }
+        } else {skipped++;}
       } else {
         var km2=line.trim().match(/^(\w+):\s*(.*)/);
         if(km2&&current)current[km2[1]]=parseVal(km2[2]);
+        else skipped++;
       }
     } else if(indent===4){
       var km3=line.trim().match(/^(\w+):\s*(.*)/);
       if(km3&&current)current[km3[1]]=parseVal(km3[2]);
+      else skipped++;
     }
   });
 
   // coerce types
   result.bills.forEach(function(b){b.amount=parseFloat(b.amount)||0;b.dropoff=b.dropoff?parseInt(b.dropoff):null;});
   result.debts.forEach(function(d){d.balance=parseFloat(d.balance)||0;d.apr=parseFloat(d.apr)||0;d.payment=parseFloat(d.payment)||0;if(d.type==='friend')d.apr=0;if(!d.color)d.color='#00e5ff';});
+  result.skipped=skipped;
   return result;
 }
 
@@ -765,6 +793,10 @@ function confirmImport(){
   if(!text){showToast('nothing to import','error');return;}
   try{
     var parsed=parseYaml(text);
+    // Stash current state before overwriting
+    if(bills.length>0||debts.length>0||income>0){
+      try{localStorage.setItem('clearance_state_backup',localStorage.getItem('clearance_state'));}catch(e){}
+    }
     income=parsed.income;
     bills=parsed.bills;
     debts=parsed.debts;
@@ -772,7 +804,8 @@ function confirmImport(){
     renderBills();renderDebts();recalc();
     closeModal('modal-import');
     saveToCache(true);
-    showToast('imported '+bills.length+' bills, '+debts.length+' debts','success');
+    if(parsed.skipped>0)showToast('imported '+bills.length+' bills, '+debts.length+' debts ('+parsed.skipped+' lines skipped)','');
+    else showToast('imported '+bills.length+' bills, '+debts.length+' debts','success');
   }catch(e){showToast('parse error: '+e.message,'error');}
 }
 
@@ -848,10 +881,13 @@ function pickColor(el){document.querySelectorAll('.color-dot').forEach(function(
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape')document.querySelectorAll('.modal-overlay').forEach(function(m){m.classList.remove('open');});
   if(e.key==='Enter'&&(e.ctrlKey||e.metaKey))saveToCache();
-  if(e.key==='Enter'){
-    if(document.getElementById('modal-bill').classList.contains('open'))confirmAddBill();
-    else if(document.getElementById('modal-debt').classList.contains('open'))confirmAddDebt();
-    else if(document.getElementById('modal-import').classList.contains('open'))confirmImport();
+  if(e.key==='Enter'&&!e.ctrlKey&&!e.metaKey){
+    var modalBill=document.getElementById('modal-bill');
+    var modalDebt=document.getElementById('modal-debt');
+    var modalImport=document.getElementById('modal-import');
+    if(modalBill.classList.contains('open')&&e.target.closest('#modal-bill')){confirmAddBill();}
+    else if(modalDebt.classList.contains('open')&&e.target.closest('#modal-debt')){confirmAddDebt();}
+    else if(modalImport.classList.contains('open')&&e.target.closest('#modal-import')){confirmImport();}
   }
 });
 document.querySelectorAll('.modal-overlay').forEach(function(m){m.addEventListener('click',function(e){if(e.target===this)closeModal(this.id);});});
