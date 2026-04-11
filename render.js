@@ -88,6 +88,15 @@ function renderDebts(){
     list.appendChild(div);
   });
   document.getElementById('debts-total').textContent=fmt(total)+' total';
+  const focusCb=document.getElementById('focus-all-cb');
+  if(focusCb)focusCb.checked=Object.keys(debtFocused).length===0;
+}
+function toggleFocusAll(checked){
+  if(checked){debtFocused={};}
+  else{debtFocused={};debts.forEach(function(d){debtFocused[d.id]=true;});}
+  // If unchecked with all selected, that's the same as all — clear it
+  if(!checked&&Object.keys(debtFocused).length===debts.length){debtFocused={};}
+  renderDebts();renderChart();renderBreakdown();
 }
 function toggleDebtFocus(id,evt){
   if(evt&&evt.shiftKey){

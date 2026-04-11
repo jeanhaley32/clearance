@@ -373,7 +373,7 @@ input.inline-num:focus{border-color:var(--accent);}
       </div>
       <div class="panel-section">
         <div class="ps-header">
-          <span class="ps-title">Debt accounts</span>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;" title="Show all debts on chart"><input type="checkbox" id="focus-all-cb" checked onchange="toggleFocusAll(this.checked)" style="cursor:pointer;"><span class="ps-title" style="margin:0;">Debt accounts</span></label>
           <span class="ps-total" id="debts-total">$0.00 total</span>
         </div>
         <div id="debts-list"></div>
