@@ -77,7 +77,7 @@ function renderDebts(){
         '<div class="debt-field"><label>Balance ($)</label><input type="number" value="'+d.balance+'" min="0" step="0.01" oninput="updateDebtField('+d.id+',\'balance\',+this.value)"></div>'+
         '<div class="debt-field"><label>APR (%)</label><input type="number" value="'+d.apr+'" min="0" max="100" step="0.1" '+(d.type==='friend'?'disabled':'')+' oninput="updateDebtField('+d.id+',\'apr\',+this.value)"></div>'+
         '<div class="debt-field full"><label>Monthly payment ($)</label><input type="number" value="'+d.payment+'" min="0" step="0.01" oninput="updateDebtField('+d.id+',\'payment\',+this.value)">'+
-        (d.type==='cc'&&d.balance>0?'<div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;">min: '+fmt(calcMinPayment(d.balance,d.apr,d.type))+'</div>':'')+
+        (d.type==='cc'&&d.balance>0?'<div id="min-hint-'+d.id+'" style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;">min: '+fmt(calcMinPayment(d.balance,d.apr,d.type))+'</div>':'')+
         '</div>'+
       '</div>';
     list.appendChild(div);
@@ -91,6 +91,10 @@ function updateDebtField(id,field,val){
   if(field==='name')d.name=val;
   else if(field==='apr')d.apr=clampApr(val);
   else d[field]=clampPositive(val);
+  if((field==='balance'||field==='apr')&&d.type==='cc'){
+    const hint=document.getElementById('min-hint-'+id);
+    if(hint)hint.textContent='min: '+fmt(calcMinPayment(d.balance,d.apr,d.type));
+  }
   markDirty();debouncedRecalc();
 }
 function removeDebt(id){
