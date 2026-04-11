@@ -302,6 +302,7 @@ input.inline-num:focus{border-color:var(--accent);}
       <button class="hbtn" onclick="importYaml()" title="Import YAML file">import</button>
       <button class="hbtn" id="export-btn" onclick="exportYaml()" title="Export YAML file">export</button>
       <button class="hbtn" id="save-btn" onclick="saveToCache()" title="Save to browser">save</button>
+      <button class="hbtn" onclick="clearAll()" title="Clear all data" style="color:var(--muted);">clear</button>
     </div>
   </div>
 </header>
@@ -1442,6 +1443,30 @@ function confirmImport(){
     if(parsed.skipped>0)showToast('imported '+bills.length+' bills, '+debts.length+' debts ('+parsed.skipped+' lines skipped)','');
     else showToast('imported '+bills.length+' bills, '+debts.length+' debts','success');
   }catch(e){showToast('parse error: '+e.message,'error');}
+}
+
+// ─── CLEAR ALL ──────────────────────────────────────────────────────────────
+function clearAll(){
+  if(!confirm('Clear all data? This cannot be undone.'))return;
+  income=0;
+  bills=[];
+  debts=[];
+  nextBillId=1;
+  nextDebtId=1;
+  strategy='current';
+  keepPct=0;
+  overrides={};
+  chain=[];
+  detailMonth=null;
+  hasExported=false;
+  document.getElementById('income-input').value=0;
+  document.getElementById('strategy-select').value='current';
+  document.getElementById('strategy-desc').textContent=strategyDescs['current'];
+  document.getElementById('keep-controls').style.display='none';
+  document.getElementById('keep-pct').value=0;
+  renderBills();renderDebts();recalc();
+  try{localStorage.removeItem('clearance_state');localStorage.removeItem('clearance_state_backup');}catch(e){}
+  showToast('all data cleared','success');
 }
 
 // ─── EXAMPLE DATA ────────────────────────────────────────────────────────────
