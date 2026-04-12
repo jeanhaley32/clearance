@@ -216,11 +216,17 @@ function attachSwipeHandler(entryEl, entryId) {
     }
   }
 
+  function onCancel() {
+    if (!dragging) return;
+    dragging = false;
+    content.style.transition = 'transform 0.15s';
+    content.style.transform = '';
+  }
+
   content.addEventListener('pointerdown', onDown);
   content.addEventListener('pointermove', onMove);
   content.addEventListener('pointerup', onUp);
-  content.addEventListener('pointercancel', onUp);
-  content.addEventListener('pointerleave', onUp);
+  content.addEventListener('pointercancel', onCancel);
 }
 
 function renderDiaryMonthSummary(date) {

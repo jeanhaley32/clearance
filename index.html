@@ -428,17 +428,25 @@ input.inline-num:focus{border-color:var(--accent);}
   .content-area{grid-template-columns:1fr;grid-template-rows:auto auto;}
   .chart-panel{border-right:none;border-bottom:1px solid var(--border);min-height:220px;max-height:40vh;}
   .breakdown-panel{max-height:none;overflow-y:auto;padding-bottom:2rem;}
-  body{overflow:auto;height:auto;}
+  body{overflow:auto;min-height:100svh;height:auto;}
   .bill-item,.debt-item{padding:8px 10px;}
-  .remove-btn{font-size:18px;padding:4px 6px;}
-  .add-btn{padding:8px 10px;font-size:11px;}
+  .remove-btn{min-width:44px;min-height:44px;font-size:20px;padding:8px 12px;display:inline-flex;align-items:center;justify-content:center;}
+  .dropoff-clear,.dropoff-add{min-width:36px;min-height:36px;padding:8px 10px;display:inline-flex;align-items:center;justify-content:center;}
+  .dsc-revert{min-width:36px;min-height:36px;padding:6px;display:inline-flex;align-items:center;justify-content:center;}
+  .dsc-inline-actions button{min-width:36px;min-height:36px;padding:6px 10px;font-size:14px;}
+  .add-btn{min-height:44px;padding:12px 14px;font-size:11px;}
+  .btn-primary,.btn-secondary{min-height:44px;padding:12px 18px;}
+  .hbtn{min-height:36px;padding:8px 14px;font-size:11px;}
+  .theme-toggle{min-width:44px;min-height:44px;padding:10px 14px;}
   .strategy-section{padding:0.75rem;}
   .proj-slider-wrap input[type=range]{height:28px;}
-  .tab-btn{padding:12px 10px;font-size:11px;}
+  .tab-btn{min-height:44px;padding:12px 10px;font-size:11px;}
   .diary-view{padding:1rem;}
   .diary-hero-val{font-size:20px;}
   .diary-amount-input{font-size:16px;}
+  .diary-cat-btn{min-height:56px;}
   .view-toggle{margin-left:0.5rem;}
+  .header{padding-top:calc(0.75rem + env(safe-area-inset-top));padding-left:calc(1rem + env(safe-area-inset-left));padding-right:calc(1rem + env(safe-area-inset-right));}
 }
 @media(max-width:480px){
   .header-stats{display:none;}
@@ -451,10 +459,9 @@ input.inline-num:focus{border-color:var(--accent);}
   .dh-cell{padding:0.6rem 0.75rem;}
   .modal{width:95vw;padding:1rem;}
   .modal h3{font-size:13px;}
-  .modal-field input,.modal-field select{font-size:14px;padding:10px 12px;}
-  .btn-primary,.btn-secondary{padding:10px 16px;font-size:13px;}
+  .modal-field input,.modal-field select{font-size:16px;padding:12px 14px;}
+  .btn-primary,.btn-secondary{padding:12px 18px;font-size:14px;min-height:44px;}
   .chart-panel{min-height:180px;max-height:35vh;padding:0.75rem;}
-  .sidebar{max-height:30vh;}
   .debt-summary-card{padding:8px 10px;}
   .dsc-name{font-size:11px;}
   .proj-tick span{font-size:7px;}

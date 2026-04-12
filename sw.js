@@ -1,10 +1,12 @@
-const CACHE = 'clearance-v1';
+const CACHE = 'clearance-v2';
 const ASSETS = [
   '/',
   '/index.html',
+  '/store.js',
   '/engine.js',
   '/render.js',
   '/diary.js',
+  '/platform.js',
   '/app.js',
   '/manifest.webmanifest',
   '/icon-192.png',

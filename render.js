@@ -16,7 +16,7 @@ function renderBills(){
       dropoffHtml=
         '<span class="dropoff-tag dropoff-editing" title="Click to change or clear dropoff month">'+
           '<span style="opacity:0.6">↓m</span>'+
-          '<input class="dropoff-inline" type="number" value="'+b.dropoff+'" min="1" max="360" title="Drops off at this month" '+
+          '<input class="dropoff-inline" type="number" inputmode="numeric" value="'+b.dropoff+'" min="1" max="360" title="Drops off at this month" '+
             'data-bill-id="'+b.id+'" '+
             'oninput="updateBillDropoff('+b.id+',this.value)" '+
             'onblur="cleanBillDropoff('+b.id+',this)">'+
@@ -28,7 +28,7 @@ function renderBills(){
     div.innerHTML=
       '<input class="bill-name" type="text" value="'+escHtml(b.name)+'" placeholder="Bill name" oninput="updateBillName('+b.id+',this.value)">'+
       dropoffHtml+
-      '<input class="bill-amount" type="number" value="'+b.amount+'" min="0" step="0.01" oninput="updateBillAmount('+b.id+',this.value)">'+
+      '<input class="bill-amount" type="number" inputmode="decimal" value="'+b.amount+'" min="0" step="0.01" oninput="updateBillAmount('+b.id+',this.value)">'+
       '<button class="remove-btn" onclick="removeBill('+b.id+')">×</button>';
     list.appendChild(div);
   });
@@ -79,9 +79,9 @@ function renderDebts(){
         '<button class="remove-btn" onclick="removeDebt('+d.id+')">×</button>'+
       '</div>'+
       '<div class="debt-fields">'+
-        '<div class="debt-field"><label>Balance ($)</label><input type="number" value="'+d.balance+'" min="0" step="0.01" oninput="updateDebtField('+d.id+',\'balance\',+this.value)"></div>'+
-        '<div class="debt-field"><label>APR (%)</label><input type="number" value="'+d.apr+'" min="0" max="100" step="0.1" '+(d.type==='friend'?'disabled':'')+' oninput="updateDebtField('+d.id+',\'apr\',+this.value)"></div>'+
-        '<div class="debt-field full"><label>Monthly payment ($)</label><input type="number" value="'+d.payment+'" min="0" step="0.01" oninput="updateDebtField('+d.id+',\'payment\',+this.value)">'+
+        '<div class="debt-field"><label>Balance ($)</label><input type="number" inputmode="decimal" value="'+d.balance+'" min="0" step="0.01" oninput="updateDebtField('+d.id+',\'balance\',+this.value)"></div>'+
+        '<div class="debt-field"><label>APR (%)</label><input type="number" inputmode="decimal" value="'+d.apr+'" min="0" max="100" step="0.1" '+(d.type==='friend'?'disabled':'')+' oninput="updateDebtField('+d.id+',\'apr\',+this.value)"></div>'+
+        '<div class="debt-field full"><label>Monthly payment ($)</label><input type="number" inputmode="decimal" value="'+d.payment+'" min="0" step="0.01" oninput="updateDebtField('+d.id+',\'payment\',+this.value)">'+
         (d.type==='cc'&&d.balance>0?'<div id="min-hint-'+d.id+'" style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;">min: '+fmt(calcMinPayment(d.balance,d.apr,d.type))+'</div>':'')+
         '</div>'+
       '</div>';
@@ -454,6 +454,7 @@ function renderBreakdown() {
           const inp = document.createElement('input');
           inp.className = 'dsc-inline-input';
           inp.type = 'number';
+          inp.inputMode = 'decimal';
           inp.min = '0';
           inp.step = '0.01';
           inp.value = d.payment.toFixed(2);
