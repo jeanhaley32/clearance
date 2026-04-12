@@ -115,17 +115,31 @@ function migrate(state) {
   // v1 → v2: diary entries move to their own key
   if (!state.schemaVersion || state.schemaVersion < 2) {
     if (Array.isArray(state.diaryEntries)) {
+      // Don't clobber an existing diary key (partial migration recovery)
+      const existingDiary = localStorage.getItem(STORE_KEYS.DIARY);
       const diaryPayload = {
         entries: state.diaryEntries,
         nextId: state.nextDiaryId || 1,
         schemaVersion: CURRENT_SCHEMA,
         savedAt: new Date().toISOString()
       };
-      try {
-        localStorage.setItem(STORE_KEYS.DIARY, JSON.stringify(diaryPayload));
-      } catch (e) {}
-      delete state.diaryEntries;
-      delete state.nextDiaryId;
+      let wrote = false;
+      if (!existingDiary) {
+        try {
+          localStorage.setItem(STORE_KEYS.DIARY, JSON.stringify(diaryPayload));
+          wrote = true;
+        } catch (e) {
+          console.warn('Diary migration write failed:', e.message);
+        }
+      } else {
+        // Diary key already exists — skip overwrite but still strip from state
+        wrote = true;
+      }
+      // Only strip v1 fields if the new write succeeded (or diary already existed)
+      if (wrote) {
+        delete state.diaryEntries;
+        delete state.nextDiaryId;
+      }
     }
     state.schemaVersion = CURRENT_SCHEMA;
   }

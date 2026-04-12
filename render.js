@@ -338,7 +338,7 @@ function recalc() {
     deltaInterest = baseTotalInterest - totalInterest;
   }
 
-  const focusLabel = focusActive ? ' <span style="color:var(--accent);font-size:9px;opacity:0.6;">(' + focusDebts.map(function(d){return d.name;}).join(', ') + ')</span>' : '';
+  const focusLabel = focusActive ? ' <span style="color:var(--accent);font-size:9px;opacity:0.6;">(' + focusDebts.map(function(d){return escHtml(d.name);}).join(', ') + ')</span>' : '';
   document.getElementById('m-cleared').innerHTML = fmtMo(clearedMonth || maxMonth) +
     (deltaMonths !== null && deltaMonths > 0 ? ' <span style="color:var(--green);font-size:12px;">(-' + deltaMonths + 'mo vs current)</span>' : '');
   document.getElementById('m-interest').innerHTML = fmt(totalInterest) +

@@ -32,7 +32,7 @@ function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function safeColor(c){return /^#[0-9a-fA-F]{6}$/.test(c)?c:'#00e5ff';}
 function getStartDate(){
   if(startDate)return startDate;
-  const d=new Date();d.setDate(1);d.setMonth(d.getMonth()+1);d.setHours(0,0,0,0);
+  const d=new Date();d.setDate(1);d.setHours(0,0,0,0);
   return d;
 }
 function monthToDate(m){const d=new Date(getStartDate());d.setMonth(d.getMonth()+m);return d;}
@@ -84,6 +84,22 @@ function closeDrawer() {
   const backdrop = document.getElementById('drawer-backdrop');
   if (sidebar) sidebar.classList.remove('drawer-open');
   if (backdrop) backdrop.classList.remove('show');
+}
+
+// ─── EXPORT INDICATOR ──────────────────────────────────────────────────────
+function updateExportIndicator(){
+  const btn=document.getElementById('export-btn');
+  if(!btn)return;
+  const hasData=(bills&&bills.length>0)||(debts&&debts.length>0)||income>0;
+  if(hasData&&!hasExported){
+    btn.style.borderColor='rgba(255,204,68,0.4)';
+    btn.style.color='var(--amber)';
+    btn.title='Unexported changes — click to export YAML backup';
+  }else{
+    btn.style.borderColor='';
+    btn.style.color='';
+    btn.title='Export YAML file';
+  }
 }
 
 // ─── DIRTY / AUTOSAVE ───────────────────────────────────────────────────────
@@ -497,11 +513,13 @@ function saveMonthOverride() {
   const month = editingMonth;
   if (month === null) return;
   const ovr = {};
+  // Compare against the inherited (pre-override) value from the previous month
+  const prevNode = chain[month - 1] || chain[0];
+  const inheritedIncome = prevNode ? prevNode.income : income;
 
   const incVal = document.getElementById('edit-month-income').value;
   const incNum = parseFloat(incVal);
-  const node = chain[month];
-  if (!isNaN(incNum) && node && incNum !== node.income) ovr.income = incNum;
+  if (!isNaN(incNum) && incNum !== inheritedIncome) ovr.income = incNum;
 
   const stratVal = document.getElementById('edit-month-strategy').value;
   if (stratVal) ovr.strategy = stratVal;
@@ -590,17 +608,21 @@ function switchView(view) {
   const sidebar = document.querySelector('.sidebar');
   const diary = document.getElementById('diary-view');
 
+  const hamburger = document.getElementById('hamburger-btn');
+
   if (view === 'diary') {
     if (emptyState) emptyState.style.display = 'none';
     if (dashboard) dashboard.style.display = 'none';
     if (warnBar) warnBar.style.display = 'none';
     if (sidebar) sidebar.style.display = 'none';
+    if (hamburger) hamburger.style.display = 'none';
     if (typeof closeDrawer === 'function') closeDrawer();
     diary.classList.add('active');
     if (!diaryDate) diaryDate = diaryToday();
     renderDiary();
   } else {
     if (sidebar) sidebar.style.display = '';
+    if (hamburger) hamburger.style.display = '';
     diary.classList.remove('active');
     // Let recalc() restore correct state for empty-state vs dashboard
     recalc();
