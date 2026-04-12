@@ -1,4 +1,4 @@
-const CACHE = 'clearance-v2';
+const CACHE = 'clearance-v3';
 const ASSETS = [
   '/',
   '/index.html',
