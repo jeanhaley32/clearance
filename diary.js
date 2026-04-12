@@ -177,7 +177,8 @@ function renderDiary() {
 
 function renderDiaryDesktop(date, dateStr, budget, spent, left) {
   const deskRoot = document.querySelector('.diary-desktop');
-  if (!deskRoot || getComputedStyle(deskRoot).display === 'none') return;
+  if (!deskRoot) return;
+  // Always render — CSS media query handles visibility. Cheap to update hidden DOM.
 
   // Date label
   const dateLabel = document.getElementById('desk-date-label');
