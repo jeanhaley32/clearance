@@ -610,12 +610,16 @@ function switchView(view) {
 
   const hamburger = document.getElementById('hamburger-btn');
 
+  const app = document.querySelector('.app');
+
   if (view === 'diary') {
     if (emptyState) emptyState.style.display = 'none';
     if (dashboard) dashboard.style.display = 'none';
     if (warnBar) warnBar.style.display = 'none';
     if (sidebar) sidebar.style.display = 'none';
     if (hamburger) hamburger.style.display = 'none';
+    // Collapse the app grid to a single column so main takes full width
+    if (app) app.style.gridTemplateColumns = '1fr';
     if (typeof closeDrawer === 'function') closeDrawer();
     diary.classList.add('active');
     if (!diaryDate) diaryDate = diaryToday();
@@ -623,6 +627,7 @@ function switchView(view) {
   } else {
     if (sidebar) sidebar.style.display = '';
     if (hamburger) hamburger.style.display = '';
+    if (app) app.style.gridTemplateColumns = '';
     diary.classList.remove('active');
     // Let recalc() restore correct state for empty-state vs dashboard
     recalc();
