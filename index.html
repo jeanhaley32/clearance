@@ -668,7 +668,7 @@ input.inline-num:focus{border-color:var(--accent);}
           <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;">When a debt pays off, keep for savings</div>
           <div class="keep-row">
             <input type="number" inputmode="numeric" id="keep-pct" value="0" min="0" max="100" step="5" oninput="onKeepChange()">
-            <label>%</label>
+            <label for="keep-pct">%</label>
           </div>
         </div>
       </div>
@@ -858,10 +858,10 @@ input.inline-num:focus{border-color:var(--accent);}
 <div class="modal-overlay" id="modal-bill">
   <div class="modal">
     <h3>Add bill</h3>
-    <div class="modal-field"><label>Name</label><input type="text" id="new-bill-name" placeholder="e.g. Rent, Netflix"></div>
-    <div class="modal-field"><label>Monthly amount ($)</label><input type="number" inputmode="decimal" id="new-bill-amount" placeholder="0.00" min="0" step="0.01"></div>
+    <div class="modal-field"><label for="new-bill-name">Name</label><input type="text" id="new-bill-name" placeholder="e.g. Rent, Netflix"></div>
+    <div class="modal-field"><label for="new-bill-amount">Monthly amount ($)</label><input type="number" inputmode="decimal" id="new-bill-amount" placeholder="0.00" min="0" step="0.01"></div>
     <div class="modal-field">
-      <label>Last active month (optional)</label>
+      <label for="new-bill-dropoff">Last active month (optional)</label>
       <input type="number" inputmode="numeric" id="new-bill-dropoff" placeholder="Leave blank if permanent" min="1">
     </div>
     <div class="modal-actions">
@@ -875,20 +875,20 @@ input.inline-num:focus{border-color:var(--accent);}
 <div class="modal-overlay" id="modal-debt">
   <div class="modal">
     <h3>Add debt account</h3>
-    <div class="modal-field"><label>Name</label><input type="text" id="new-debt-name" placeholder="e.g. Chase Sapphire"></div>
+    <div class="modal-field"><label for="new-debt-name">Name</label><input type="text" id="new-debt-name" placeholder="e.g. Chase Sapphire"></div>
     <div class="modal-field">
-      <label>Type</label>
+      <label for="new-debt-type">Type</label>
       <select id="new-debt-type" onchange="onDebtTypeChange()">
         <option value="cc">Credit card</option>
         <option value="loan">Personal / installment loan</option>
         <option value="friend">Friend / family (0% APR)</option>
       </select>
     </div>
-    <div class="modal-field"><label>Starting balance ($)</label><input type="number" inputmode="decimal" id="new-debt-balance" placeholder="0.00" min="0" step="0.01" oninput="updateMinPaymentHint()"></div>
-    <div class="modal-field" id="apr-field"><label>APR (%)</label><input type="number" inputmode="decimal" id="new-debt-apr" placeholder="0.00" min="0" max="100" step="0.1" value="0" oninput="updateMinPaymentHint()"></div>
-    <div class="modal-field"><label>Monthly payment ($)</label><input type="number" inputmode="decimal" id="new-debt-payment" placeholder="0.00" min="0" step="0.01"><div id="min-payment-hint" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;"></div></div>
+    <div class="modal-field"><label for="new-debt-balance">Starting balance ($)</label><input type="number" inputmode="decimal" id="new-debt-balance" placeholder="0.00" min="0" step="0.01" oninput="updateMinPaymentHint()"></div>
+    <div class="modal-field" id="apr-field"><label for="new-debt-apr">APR (%)</label><input type="number" inputmode="decimal" id="new-debt-apr" placeholder="0.00" min="0" max="100" step="0.1" value="0" oninput="updateMinPaymentHint()"></div>
+    <div class="modal-field"><label for="new-debt-payment">Monthly payment ($)</label><input type="number" inputmode="decimal" id="new-debt-payment" placeholder="0.00" min="0" step="0.01"><div id="min-payment-hint" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;"></div></div>
     <div class="modal-field">
-      <label>Color</label>
+      <label for="color-picker">Color</label>
       <div class="color-picker" id="color-picker">
         <div class="color-dot selected" style="background:#00e5ff" data-color="#00e5ff" onclick="pickColor(this)"></div>
         <div class="color-dot" style="background:#ff4466" data-color="#ff4466" onclick="pickColor(this)"></div>

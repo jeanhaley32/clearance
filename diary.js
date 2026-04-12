@@ -721,31 +721,43 @@ function attachSwipeHandler(entryEl, entryId) {
 }
 
 function renderDiaryMonthSummary(date) {
+  // Legacy mobile month summary panel — elements were removed in the forked layout.
+  // Desktop month summary is rendered in renderDesktopMonth(). This function
+  // only runs if the old mobile elements still exist (for backward compatibility).
+  const titleEl = document.getElementById('diary-month-title');
+  if (!titleEl) return;
+
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  document.getElementById('diary-month-title').textContent = monthNames[date.getMonth()] + ' ' + date.getFullYear();
+  titleEl.textContent = monthNames[date.getMonth()] + ' ' + date.getFullYear();
 
   const totals = getMonthCategoryTotals(date);
   const catTotalsEl = document.getElementById('diary-cat-totals');
-  catTotalsEl.innerHTML = '';
-  DIARY_CATEGORIES.forEach(function(cat) {
-    const div = document.createElement('div');
-    div.className = 'diary-cat-total';
-    div.innerHTML =
-      '<div class="cat-icon">' + cat.icon + '</div>' +
-      '<div class="cat-amount" style="color:' + cat.color + ';">$' + (totals[cat.id] || 0).toFixed(0) + '</div>';
-    catTotalsEl.appendChild(div);
-  });
+  if (catTotalsEl) {
+    catTotalsEl.innerHTML = '';
+    DIARY_CATEGORIES.forEach(function(cat) {
+      const div = document.createElement('div');
+      div.className = 'diary-cat-total';
+      div.innerHTML =
+        '<div class="cat-icon">' + cat.icon + '</div>' +
+        '<div class="cat-amount" style="color:' + cat.color + ';">$' + (totals[cat.id] || 0).toFixed(0) + '</div>';
+      catTotalsEl.appendChild(div);
+    });
+  }
 
   const monthBudget = getMonthBudget(date);
   const monthSpent = (totals.food || 0) + (totals.essentials || 0) + (totals.lifestyle || 0);
   const pct = monthBudget > 0 ? Math.min(100, (monthSpent / monthBudget) * 100) : 0;
 
   const bar = document.getElementById('diary-progress-bar');
-  bar.style.width = pct + '%';
-  bar.style.background = pct > 90 ? 'var(--red)' : pct > 70 ? 'var(--amber)' : 'var(--green)';
+  if (bar) {
+    bar.style.width = pct + '%';
+    bar.style.background = pct > 90 ? 'var(--red)' : pct > 70 ? 'var(--amber)' : 'var(--green)';
+  }
 
-  document.getElementById('diary-progress-label').textContent =
-    '$' + monthSpent.toFixed(0) + ' of $' + Math.max(0, monthBudget).toFixed(0) + ' (' + pct.toFixed(0) + '%)';
+  const labelEl = document.getElementById('diary-progress-label');
+  if (labelEl) {
+    labelEl.textContent = '$' + monthSpent.toFixed(0) + ' of $' + Math.max(0, monthBudget).toFixed(0) + ' (' + pct.toFixed(0) + '%)';
+  }
 }
 
 // ─── DATE NAVIGATION ────────────────────────────────────────────────────────
