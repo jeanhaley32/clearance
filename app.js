@@ -62,6 +62,28 @@ function switchTab(tab){
   document.querySelectorAll('.tab-btn').forEach(function(b,i){b.classList.toggle('active',(i===0&&tab==='bills')||(i===1&&tab==='debts'));});
   document.getElementById('tab-bills').classList.toggle('active',tab==='bills');
   document.getElementById('tab-debts').classList.toggle('active',tab==='debts');
+  if (window.innerWidth <= 800) closeDrawer();
+}
+
+// ─── DRAWER ───────────────────────────────────────────────────────────────
+function toggleDrawer() {
+  const sidebar = document.querySelector('.sidebar');
+  const backdrop = document.getElementById('drawer-backdrop');
+  if (!sidebar || !backdrop) return;
+  const isOpen = sidebar.classList.contains('drawer-open');
+  if (isOpen) {
+    closeDrawer();
+  } else {
+    sidebar.classList.add('drawer-open');
+    backdrop.classList.add('show');
+  }
+}
+
+function closeDrawer() {
+  const sidebar = document.querySelector('.sidebar');
+  const backdrop = document.getElementById('drawer-backdrop');
+  if (sidebar) sidebar.classList.remove('drawer-open');
+  if (backdrop) backdrop.classList.remove('show');
 }
 
 // ─── DIRTY / AUTOSAVE ───────────────────────────────────────────────────────
@@ -79,49 +101,70 @@ function autoSave(){
   saveToCache(true);
 }
 
-// ─── LOCALSTORAGE ────────────────────────────────────────────────────────────
-function saveToCache(silent){
-  const state={income:income,bills:bills,debts:debts,nextBillId:nextBillId,nextDebtId:nextDebtId,hasExported:hasExported,strategy:strategy,keepPct:keepPct,overrides:overrides,startDate:startDate?startDate.toISOString():null,diaryEntries:diaryEntries,nextDiaryId:nextDiaryId,savedAt:new Date().toISOString()};
-  try{
-    localStorage.setItem('clearance_state',JSON.stringify(state));
-    dirty=false;
-    const btn=document.getElementById('save-btn');
-    btn.textContent='saved';
-    btn.style.color='var(--green)';
-    btn.style.borderColor='rgba(0,224,150,0.3)';
-    setTimeout(function(){btn.textContent='save';btn.style.color='';btn.style.borderColor='';},2000);
-    if(!silent)showToast('saved to browser cache','success');
-  }catch(e){showToast('save failed: '+e.message,'error');}
+// ─── LOCALSTORAGE (delegated to store.js) ────────────────────────────────────
+function saveToCache(silent) {
+  const state = {
+    income: income, bills: bills, debts: debts,
+    nextBillId: nextBillId, nextDebtId: nextDebtId,
+    hasExported: hasExported,
+    strategy: strategy, keepPct: keepPct, overrides: overrides,
+    startDate: startDate ? startDate.toISOString() : null
+  };
+  try {
+    const ok = saveState(state);
+    if (!ok) throw new Error('save failed');
+    // ALSO save diary separately
+    saveDiary({ entries: diaryEntries, nextId: nextDiaryId });
+    dirty = false;
+    const btn = document.getElementById('save-btn');
+    btn.textContent = 'saved';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'rgba(0,224,150,0.3)';
+    setTimeout(function() { btn.textContent = 'save'; btn.style.color = ''; btn.style.borderColor = ''; }, 2000);
+    if (!silent) showToast('saved to browser cache', 'success');
+  } catch (e) {
+    showToast('save failed: ' + e.message, 'error');
+  }
 }
 
-function loadFromCache(){
-  try{
-    const raw=localStorage.getItem('clearance_state');
-    if(!raw)return false;
-    const state=JSON.parse(raw);
-    income=state.income||0;
-    bills=state.bills||[];
-    debts=state.debts||[];
-    nextBillId=state.nextBillId||Math.max.apply(null,bills.map(function(b){return b.id;}).concat([0]))+1;
-    nextDebtId=state.nextDebtId||Math.max.apply(null,debts.map(function(d){return d.id;}).concat([0]))+1;
-    hasExported=state.hasExported||false;
-    strategy=state.strategy||'current';
-    keepPct=state.keepPct||0;
-    overrides=state.overrides||{};
-    if(state.startDate){startDate=new Date(state.startDate);const sd=document.getElementById('start-date-input');sd.value=startDate.getFullYear()+'-'+String(startDate.getMonth()+1).padStart(2,'0');}else{startDate=null;}
-    diaryEntries = state.diaryEntries || [];
-    nextDiaryId = state.nextDiaryId || Math.max.apply(null, diaryEntries.map(function(e){return e.id;}).concat([0])) + 1;
-    document.getElementById('strategy-select').value=strategy;
-    document.getElementById('strategy-desc').textContent=strategyDescs[strategy]||'';
-    document.getElementById('keep-controls').style.display=strategy==='current'?'none':'';
-    document.getElementById('keep-pct').value=keepPct;
-    document.getElementById('income-input').value=income;
-    renderBills();renderDebts();recalc();
+function loadFromCache() {
+  try {
+    const state = loadState();
+    if (!state) return false;
+    income = state.income || 0;
+    bills = state.bills || [];
+    debts = state.debts || [];
+    nextBillId = state.nextBillId || Math.max.apply(null, bills.map(function(b) { return b.id; }).concat([0])) + 1;
+    nextDebtId = state.nextDebtId || Math.max.apply(null, debts.map(function(d) { return d.id; }).concat([0])) + 1;
+    hasExported = state.hasExported || false;
+    strategy = state.strategy || 'current';
+    keepPct = state.keepPct || 0;
+    overrides = state.overrides || {};
+    if (state.startDate) {
+      startDate = new Date(state.startDate);
+      const sd = document.getElementById('start-date-input');
+      sd.value = startDate.getFullYear() + '-' + String(startDate.getMonth() + 1).padStart(2, '0');
+    } else {
+      startDate = null;
+    }
+    // Load diary from its own key (with migration fallback)
+    const diary = loadDiary();
+    diaryEntries = diary.entries || [];
+    nextDiaryId = diary.nextId || Math.max.apply(null, diaryEntries.map(function(e) { return e.id; }).concat([0])) + 1;
+    document.getElementById('strategy-select').value = strategy;
+    document.getElementById('strategy-desc').textContent = strategyDescs[strategy] || '';
+    document.getElementById('keep-controls').style.display = strategy === 'current' ? 'none' : '';
+    document.getElementById('keep-pct').value = keepPct;
+    document.getElementById('income-input').value = income;
+    renderBills(); renderDebts(); recalc();
     updateExportIndicator();
-    const d=new Date(state.savedAt);
-    showToast('restored from '+d.toLocaleDateString()+' '+d.toLocaleTimeString(),'success');
+    const d = new Date(state.savedAt || Date.now());
+    showToast('restored from ' + d.toLocaleDateString() + ' ' + d.toLocaleTimeString(), 'success');
     return true;
-  }catch(e){showToast('Could not restore saved data: '+e.message,'error');return false;}
+  } catch (e) {
+    showToast('Could not restore saved data: ' + e.message, 'error');
+    return false;
+  }
 }
 
 // ─── YAML EXPORT ─────────────────────────────────────────────────────────────
@@ -252,8 +295,8 @@ function confirmImport(){
     const parsed=parseYaml(text);
     // Stash current state before overwriting
     if(bills.length>0||debts.length>0||income>0){
-      const existing=localStorage.getItem('clearance_state');
-      if(existing){try{localStorage.setItem('clearance_state_backup',existing);}catch(e){}}
+      const existing=getRawState();
+      if(existing)setBackup(existing);
     }
     income=parsed.income;
     bills=parsed.bills;
@@ -301,7 +344,7 @@ function clearAll(){
   const defDate=getStartDate();
   document.getElementById('start-date-input').value=defDate.getFullYear()+'-'+String(defDate.getMonth()+1).padStart(2,'0');
   renderBills();renderDebts();recalc();
-  try{localStorage.removeItem('clearance_state');localStorage.removeItem('clearance_state_backup');}catch(e){}
+  clearAllStorage(); // from store.js — clears all clearance_* keys
   showToast('all data cleared','success');
 }
 
@@ -522,14 +565,12 @@ function toggleTheme(){
   const cycle={auto:'light',light:'dark',dark:'auto'};
   themeState=cycle[themeState];
   applyTheme(themeState);
-  try{localStorage.setItem('clearance_theme',themeState);}catch(e){}
+  saveTheme(themeState);
 }
 
 function initTheme(){
-  try{
-    const saved=localStorage.getItem('clearance_theme');
-    if(saved==='light'||saved==='dark'||saved==='auto')themeState=saved;
-  }catch(e){}
+  const saved=loadTheme();
+  if(saved==='light'||saved==='dark'||saved==='auto')themeState=saved;
   applyTheme(themeState);
 }
 
@@ -591,3 +632,63 @@ if(!document.getElementById('start-date-input').value){
   document.getElementById('start-date-input').value=def.getFullYear()+'-'+String(def.getMonth()+1).padStart(2,'0');
 }
 if(!loadFromCache()){recalc();}
+
+// ─── SERVICE WORKER ───────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js').catch(function(err) {
+      console.warn('SW registration failed:', err);
+    });
+  });
+}
+
+// ─── INSTALL PROMPT ───────────────────────────────────────────────────────
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Only show if not already dismissed
+  try {
+    if (typeof getInstallDismissed === 'function' && getInstallDismissed()) return;
+  } catch(err) {}
+  const banner = document.getElementById('install-banner');
+  const msg = document.getElementById('install-msg');
+  if (banner && msg) {
+    msg.textContent = 'Install Clearance on your device';
+    banner.classList.add('show');
+  }
+});
+
+function triggerInstall() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(function() {
+    deferredInstallPrompt = null;
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.classList.remove('show');
+  });
+}
+
+function dismissInstall() {
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.classList.remove('show');
+  try { if (typeof setInstallDismissed === 'function') setInstallDismissed(); } catch(e) {}
+}
+
+// iOS-specific install banner (no beforeinstallprompt on iOS)
+window.addEventListener('load', function() {
+  if (typeof isIOS === 'function' && isIOS() && typeof isStandalone === 'function' && !isStandalone()) {
+    try {
+      if (typeof getInstallDismissed === 'function' && getInstallDismissed()) return;
+    } catch(err) {}
+    const banner = document.getElementById('install-banner');
+    const msg = document.getElementById('install-msg');
+    const installBtn = document.getElementById('install-btn');
+    if (banner && msg && installBtn) {
+      msg.textContent = 'Install: tap Share → Add to Home Screen';
+      installBtn.style.display = 'none';
+      setTimeout(function() { banner.classList.add('show'); }, 2000);
+    }
+  }
+});

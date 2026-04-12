@@ -235,3 +235,5 @@ function buildChain(seed, overrides, maxMonths) {
 
   return chain;
 }
+
+if (typeof module !== 'undefined') module.exports = { calcMinPayment, buildChain };

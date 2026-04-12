@@ -161,14 +161,66 @@ function renderDiaryEntries(dateStr) {
     const cat = DIARY_CATEGORIES.find(function(c) { return c.id === e.category; }) || DIARY_CATEGORIES[0];
     const div = document.createElement('div');
     div.className = 'diary-entry';
+    div.dataset.entryId = e.id;
     div.innerHTML =
-      '<span class="diary-entry-icon">' + cat.icon + '</span>' +
-      '<span class="diary-entry-amount">$' + e.amount.toFixed(2) + '</span>' +
-      '<span class="diary-entry-cat" style="color:' + cat.color + ';">' + cat.label + '</span>' +
-      '<span class="diary-entry-note">' + escHtml(e.note || '') + '</span>' +
-      '<button class="remove-btn" onclick="deleteDiaryEntry(' + e.id + ')" title="Delete">×</button>';
+      '<div class="diary-entry-swipe-action">delete</div>' +
+      '<div class="diary-entry-content">' +
+        '<span class="diary-entry-icon">' + cat.icon + '</span>' +
+        '<span class="diary-entry-amount">$' + e.amount.toFixed(2) + '</span>' +
+        '<span class="diary-entry-cat" style="color:' + cat.color + ';">' + cat.label + '</span>' +
+        '<span class="diary-entry-note">' + escHtml(e.note || '') + '</span>' +
+        '<button class="remove-btn" onclick="deleteDiaryEntry(' + e.id + ')" title="Delete">×</button>' +
+      '</div>';
     list.appendChild(div);
+    attachSwipeHandler(div, e.id);
   });
+}
+
+function attachSwipeHandler(entryEl, entryId) {
+  const content = entryEl.querySelector('.diary-entry-content');
+  if (!content) return;
+
+  let startX = 0;
+  let currentX = 0;
+  let dragging = false;
+  const threshold = 80;
+
+  function onDown(e) {
+    const pt = e.touches ? e.touches[0] : e;
+    startX = pt.clientX;
+    currentX = 0;
+    dragging = true;
+    content.style.transition = 'none';
+  }
+
+  function onMove(e) {
+    if (!dragging) return;
+    const pt = e.touches ? e.touches[0] : e;
+    const dx = pt.clientX - startX;
+    if (dx > 0) { currentX = 0; content.style.transform = ''; return; } // only left swipe
+    currentX = Math.max(dx, -120);
+    content.style.transform = 'translateX(' + currentX + 'px)';
+  }
+
+  function onUp() {
+    if (!dragging) return;
+    dragging = false;
+    content.style.transition = 'transform 0.15s';
+    if (currentX < -threshold) {
+      // Commit delete
+      content.style.transform = 'translateX(-100%)';
+      if (typeof vibrate === 'function') vibrate([20, 40, 20]);
+      setTimeout(function() { deleteDiaryEntry(entryId); }, 150);
+    } else {
+      content.style.transform = '';
+    }
+  }
+
+  content.addEventListener('pointerdown', onDown);
+  content.addEventListener('pointermove', onMove);
+  content.addEventListener('pointerup', onUp);
+  content.addEventListener('pointercancel', onUp);
+  content.addEventListener('pointerleave', onUp);
 }
 
 function renderDiaryMonthSummary(date) {
@@ -236,6 +288,7 @@ function diaryAddEntry(category) {
   if (entry) {
     const cat = DIARY_CATEGORIES.find(function(c) { return c.id === category; });
     showToast('$' + amount.toFixed(2) + ' ' + (cat ? cat.icon : '') + ' ' + category, 'success');
+    if (typeof vibrate === 'function') vibrate(10);
   }
 
   // Reset form
@@ -278,6 +331,7 @@ function deleteDiaryEntry(id) {
 // ─── KEYBOARD SUPPORT ───────────────────────────────────────────────────────
 
 (function() {
+  if (typeof document === 'undefined') return;
   const amountInput = document.getElementById('diary-amount');
   if (amountInput) {
     amountInput.addEventListener('keydown', function(e) {
@@ -289,3 +343,18 @@ function deleteDiaryEntry(id) {
     });
   }
 })();
+
+if (typeof module !== 'undefined') {
+  module.exports = {
+    DIARY_CATEGORIES,
+    diaryDateStr,
+    diaryToday,
+    getEntriesForDate,
+    getEntriesForMonth,
+    getDaySpent,
+    getMonthSpentBefore,
+    getDailyBudget,
+    getMonthBudget,
+    getMonthCategoryTotals
+  };
+}
