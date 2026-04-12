@@ -582,18 +582,28 @@ function switchView(view) {
   document.getElementById('view-dashboard-btn').classList.toggle('active', view === 'dashboard');
   document.getElementById('view-diary-btn').classList.toggle('active', view === 'diary');
 
-  // Show/hide views
-  const app = document.querySelector('.app');
+  // Hide dashboard children (empty state + dashboard) rather than the whole .app
+  // because .diary-view lives inside main and would be hidden otherwise.
+  const emptyState = document.getElementById('empty-state');
+  const dashboard = document.getElementById('dashboard');
+  const warnBar = document.getElementById('warn-bar');
+  const sidebar = document.querySelector('.sidebar');
   const diary = document.getElementById('diary-view');
 
   if (view === 'diary') {
-    app.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
+    if (dashboard) dashboard.style.display = 'none';
+    if (warnBar) warnBar.style.display = 'none';
+    if (sidebar) sidebar.style.display = 'none';
+    if (typeof closeDrawer === 'function') closeDrawer();
     diary.classList.add('active');
     if (!diaryDate) diaryDate = diaryToday();
     renderDiary();
   } else {
-    app.style.display = '';
+    if (sidebar) sidebar.style.display = '';
     diary.classList.remove('active');
+    // Let recalc() restore correct state for empty-state vs dashboard
+    recalc();
   }
 }
 
