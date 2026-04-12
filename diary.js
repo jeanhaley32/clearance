@@ -132,10 +132,10 @@ function renderDiary() {
   const isToday = diaryDateStr(today) === dateStr;
   const isFuture = date > today;
 
-  // Date label
+  // Date label (mobile)
   const dateLabel = document.getElementById('diary-date-label');
   const opts = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
-  dateLabel.textContent = (isToday ? 'Today — ' : '') + date.toLocaleDateString(undefined, opts);
+  if (dateLabel) dateLabel.textContent = (isToday ? 'Today — ' : '') + date.toLocaleDateString(undefined, opts);
 
   // Budget + left (single number now, above numpad)
   const budget = getDailyBudget(date);
