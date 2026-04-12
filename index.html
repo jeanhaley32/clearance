@@ -263,13 +263,89 @@ input.inline-num:focus{border-color:var(--accent);}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
 
 /* DIARY */
-/* DIARY — desktop: two-column layout; mobile: single-column stack (see responsive) */
-.diary-view{display:none;flex:1;overflow-y:auto;padding:1.75rem 2rem;width:100%;}
+/* DIARY — forked mobile/desktop layouts */
+.diary-view{display:none;flex:1;overflow-y:auto;width:100%;}
 .diary-view.active{display:block;}
-.diary-view-inner{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:2rem;max-width:900px;margin:0 auto;align-items:start;}
-.diary-col-main{display:flex;flex-direction:column;min-width:0;align-items:stretch;}
-.diary-col-side{display:flex;flex-direction:column;gap:1rem;position:sticky;top:1rem;}
-.diary-date-nav{display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;max-width:480px;width:100%;margin-left:auto;margin-right:auto;}
+.diary-mobile{display:block;padding:1rem;max-width:600px;margin:0 auto;width:100%;}
+.diary-desktop{display:none;padding:1.5rem 2rem;}
+
+@media(min-width:801px){
+  .diary-mobile{display:none;}
+  .diary-desktop{display:block;}
+}
+
+/* DESKTOP LAYOUT */
+.desktop-header{display:flex;align-items:center;justify-content:space-between;max-width:1400px;margin:0 auto 1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border);}
+.desktop-date-nav{display:flex;align-items:center;gap:0.75rem;}
+.desktop-date-nav button{background:none;border:1px solid var(--border2);border-radius:5px;color:var(--muted2);font-family:var(--mono);font-size:12px;padding:6px 12px;cursor:pointer;transition:all 0.15s;min-width:36px;}
+.desktop-date-nav button:hover{border-color:var(--accent);color:var(--accent);}
+.desktop-date-nav .diary-today{font-family:var(--sans);font-size:15px;font-weight:600;color:var(--text);padding:0 0.5rem;}
+.desktop-today-btn{font-size:10px !important;}
+.desktop-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:1.5rem;max-width:1400px;margin:0 auto;align-items:start;}
+.desktop-left{display:flex;flex-direction:column;gap:1rem;}
+.desktop-right{display:flex;flex-direction:column;gap:1rem;}
+.desktop-panel{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1.25rem;}
+.desktop-panel-title{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.75rem;}
+
+/* Entry strip */
+.entry-strip{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:0.75rem;display:flex;gap:8px;align-items:center;}
+.entry-strip-amount{flex:0 0 130px;background:var(--s3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:16px;padding:10px 12px;outline:none;text-align:right;}
+.entry-strip-amount:focus{border-color:var(--accent);}
+.entry-strip-cat{flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:10px 8px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;}
+.entry-strip-cat:disabled{opacity:0.4;cursor:not-allowed;}
+.entry-strip-cat:not(:disabled):hover{border-color:var(--accent);background:var(--accent-dim);}
+.entry-strip-cat kbd{font-size:9px;background:var(--s3);padding:2px 5px;border-radius:3px;color:var(--muted);margin-left:3px;}
+.desktop-entries-header{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;padding:0 0.25rem;margin-top:0.5rem;}
+.desktop-entries{display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 340px);overflow-y:auto;padding-right:4px;}
+.desktop-day-group{margin-bottom:0.5rem;}
+.desktop-day-header{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;padding:8px 0 4px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.desktop-day-header.today{color:var(--accent);}
+.desktop-entry{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s1);border:1px solid var(--border);border-radius:6px;transition:border-color 0.15s;}
+.desktop-entry:hover{border-color:var(--border2);}
+.desktop-entry .diary-entry-icon{font-size:14px;flex-shrink:0;}
+.desktop-entry .diary-entry-amount{font-family:var(--mono);font-size:13px;font-weight:500;min-width:64px;}
+.desktop-entry .diary-entry-cat{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:0.06em;min-width:70px;}
+.desktop-entry .diary-entry-note{flex:1;font-family:var(--mono);font-size:11px;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.desktop-entry .remove-btn{flex-shrink:0;}
+
+/* HUD */
+.desktop-hud{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);border-radius:8px;overflow:hidden;}
+.desktop-hud-cell{background:var(--s2);padding:0.85rem;text-align:center;}
+.desktop-hud-label{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;}
+.desktop-hud-val{font-family:var(--mono);font-size:22px;font-weight:500;letter-spacing:-0.02em;}
+.desktop-hud-val.accent{color:var(--accent);}
+.desktop-hud-val.green{color:var(--green);}
+.desktop-hud-val.red{color:var(--red);}
+
+/* Week bars */
+.desk-week-bars{display:flex;flex-direction:column;gap:6px;}
+.desk-week-row{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--muted2);}
+.desk-week-day{min-width:60px;color:var(--muted);}
+.desk-week-day.today{color:var(--accent);font-weight:500;}
+.desk-week-bar-track{flex:1;height:12px;background:var(--s2);border-radius:3px;overflow:hidden;position:relative;}
+.desk-week-bar{height:100%;background:var(--accent);border-radius:3px;transition:width 0.3s;}
+.desk-week-bar.over-budget{background:var(--red);}
+.desk-week-amount{min-width:60px;text-align:right;color:var(--text);font-size:11px;}
+
+/* Month totals */
+.desktop-month-totals{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.desktop-month-row{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;}
+.desktop-month-row .cat-icon{font-size:16px;min-width:22px;}
+.desktop-month-row .cat-label{min-width:80px;color:var(--muted2);text-transform:uppercase;font-size:10px;letter-spacing:0.06em;}
+.desktop-month-row .cat-bar-track{flex:1;height:8px;background:var(--s2);border-radius:3px;overflow:hidden;}
+.desktop-month-row .cat-bar{height:100%;border-radius:3px;transition:width 0.3s;}
+.desktop-month-row .cat-amount{min-width:60px;text-align:right;color:var(--text);font-weight:500;}
+.desktop-month-progress{height:8px;background:var(--s3);border-radius:4px;overflow:hidden;margin-bottom:8px;margin-top:4px;}
+.desktop-month-progress-bar{height:100%;border-radius:4px;transition:width 0.3s;}
+.desktop-month-progress-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;}
+
+/* All-time panel */
+.desktop-alltime{font-family:var(--mono);font-size:13px;color:var(--text);text-align:center;padding:0.5rem 0;}
+.desktop-alltime .net{font-size:22px;font-weight:500;letter-spacing:-0.02em;margin-bottom:4px;}
+.desktop-alltime .net.positive{color:var(--green);}
+.desktop-alltime .net.negative{color:var(--red);}
+.desktop-alltime .sub{font-size:10px;color:var(--muted);letter-spacing:0.04em;text-transform:uppercase;}
+.diary-date-nav{display:flex;align-items:center;gap:0.5rem;margin-bottom:1.25rem;}
 .diary-date-nav button{background:none;border:1px solid var(--border2);border-radius:5px;color:var(--muted2);font-family:var(--mono);font-size:12px;padding:6px 12px;cursor:pointer;transition:all 0.15s;min-width:36px;}
 .diary-date-nav button:hover{border-color:var(--accent);color:var(--accent);}
 .diary-date-nav .diary-today{flex:1;font-family:var(--sans);font-size:14px;font-weight:600;color:var(--text);text-align:center;letter-spacing:0.01em;}
@@ -281,32 +357,32 @@ input.inline-num:focus{border-color:var(--accent);}
 .diary-hero-val.red{color:var(--red);}
 .diary-hero-val.accent{color:var(--accent);}
 /* NUMPAD-FIRST ENTRY SCREEN */
-.diary-entry-screen{display:flex;flex-direction:column;gap:0.75rem;background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.75rem 1.5rem 1.25rem;max-width:480px;margin:0 auto;width:100%;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
-.diary-left-hint{text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.25rem;}
-.diary-amount-display{font-family:var(--mono);font-size:72px;font-weight:500;color:var(--text);text-align:center;letter-spacing:-0.03em;line-height:1;padding:0.5rem 0 1rem;min-height:90px;transition:color 0.15s,transform 0.15s;}
+.diary-entry-screen{display:flex;flex-direction:column;gap:0.75rem;}
+.diary-left-hint{text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;}
+.diary-amount-display{font-family:var(--mono);font-size:64px;font-weight:500;color:var(--text);text-align:center;letter-spacing:-0.03em;line-height:1;padding:0.5rem 0;min-height:80px;transition:color 0.15s,transform 0.15s;}
 .diary-amount-display.empty{color:var(--muted);}
 .diary-amount-display.bounce{animation:bounceAmount 0.35s ease;}
 @keyframes bounceAmount{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
-.diary-numpad{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:100%;}
-.numpad-btn{background:var(--s2);border:1px solid var(--border2);border-radius:12px;color:var(--text);font-family:var(--mono);font-size:26px;font-weight:400;padding:0;min-height:64px;cursor:pointer;transition:all 0.1s;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
+.diary-numpad{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;max-width:420px;width:100%;margin:0 auto;}
+.numpad-btn{background:var(--s2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:24px;font-weight:400;padding:0;min-height:60px;cursor:pointer;transition:all 0.1s;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
 .numpad-btn:hover{background:var(--accent-dim);border-color:var(--accent);}
 .numpad-btn:active{transform:scale(0.95);background:var(--accent-dim);}
-.numpad-btn[data-key="back"]{font-size:22px;color:var(--muted2);}
-.diary-commit-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:100%;margin-top:0.5rem;}
-.commit-btn{background:var(--s2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:11px;letter-spacing:0.04em;padding:14px 8px;cursor:pointer;transition:all 0.15s;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;-webkit-tap-highlight-color:transparent;}
+.numpad-btn[data-key="back"]{font-size:20px;color:var(--muted2);}
+.diary-commit-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;max-width:420px;width:100%;margin:0.5rem auto 0;}
+.commit-btn{background:var(--s2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:11px;letter-spacing:0.04em;padding:12px 6px;cursor:pointer;transition:all 0.15s;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;-webkit-tap-highlight-color:transparent;}
 .commit-btn:disabled{opacity:0.35;cursor:not-allowed;}
 .commit-btn:not(:disabled):hover{border-color:var(--accent);background:var(--accent-dim);}
 .commit-btn:not(:disabled):active{transform:translateY(1px);}
 .commit-icon{font-size:18px;}
 .commit-arrow{color:var(--muted);font-size:12px;}
-.diary-entry-footer{display:flex;align-items:center;gap:10px;margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);}
+.diary-entry-footer{display:flex;align-items:center;gap:10px;margin-top:0.25rem;}
 .diary-today-strip{flex:1;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:11px;color:var(--muted2);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color 0.15s;}
 .diary-today-strip:hover{border-color:var(--border2);color:var(--text);}
 .diary-strip-caret{color:var(--muted);font-size:16px;transition:transform 0.2s;}
 .diary-strip-caret.open{transform:rotate(90deg);}
 .diary-got-fab{background:var(--s2);border:1px solid var(--green);color:var(--green);border-radius:8px;padding:10px 16px;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;cursor:pointer;transition:all 0.15s;flex-shrink:0;min-height:40px;-webkit-tap-highlight-color:transparent;}
 .diary-got-fab:hover{background:var(--green-dim);}
-.diary-entries-panel{margin-top:1rem;display:none;max-width:480px;width:100%;margin-left:auto;margin-right:auto;}
+.diary-entries-panel{margin-top:1rem;display:none;}
 .diary-entries-panel.open{display:block;animation:fadeIn 0.2s ease;}
 
 .diary-add{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:1.25rem;}
@@ -476,14 +552,11 @@ input.inline-num:focus{border-color:var(--accent);}
   .strategy-section{padding:0.75rem;}
   .proj-slider-wrap input[type=range]{height:28px;}
   .tab-btn{min-height:44px;padding:12px 10px;font-size:11px;}
-  .diary-view{padding:1rem;}
-  .diary-view-inner{grid-template-columns:1fr;gap:1rem;max-width:600px;}
-  .diary-col-side{margin-top:1rem;position:static;}
+  .diary-view{padding:0;}
   .diary-hero-val{font-size:22px;}
   .diary-amount-input{font-size:16px;}
   .diary-cat-btn{min-height:56px;}
-  .diary-entry-screen{padding:1.25rem 1rem 1rem;max-width:100%;}
-  .diary-amount-display{font-size:56px;min-height:72px;padding:0.25rem 0 0.5rem;}
+  .diary-amount-display{font-size:52px;min-height:68px;}
   .numpad-btn{min-height:56px;font-size:22px;}
   .view-toggle{margin-left:0.5rem;}
   .header{padding-top:calc(0.75rem + env(safe-area-inset-top));padding-left:calc(1rem + env(safe-area-inset-left));padding-right:calc(1rem + env(safe-area-inset-right));}
@@ -685,57 +758,95 @@ input.inline-num:focus{border-color:var(--accent);}
 
     <!-- DIARY VIEW -->
     <div class="diary-view" id="diary-view">
-      <div class="diary-view-inner">
-        <div class="diary-col-main">
-          <div class="diary-date-nav">
-            <button onclick="diaryPrevDay()" title="Previous day">◀</button>
-            <div class="diary-today" id="diary-date-label">Today</div>
-            <button onclick="diaryNextDay()" title="Next day">▶</button>
-            <button onclick="diaryGoToday()" title="Go to today" style="font-size:10px;">today</button>
+      <!-- MOBILE LAYOUT (<=800px) -->
+      <div class="diary-mobile">
+        <div class="diary-date-nav">
+          <button onclick="diaryPrevDay()" title="Previous day">◀</button>
+          <div class="diary-today" id="diary-date-label">Today</div>
+          <button onclick="diaryNextDay()" title="Next day">▶</button>
+          <button onclick="diaryGoToday()" title="Go to today" style="font-size:10px;">today</button>
+        </div>
+        <div class="diary-entry-screen" id="diary-entry-screen">
+          <div class="diary-left-hint" id="diary-left-hint">$0 left today</div>
+          <div class="diary-amount-display" id="diary-amount-display">$0.00</div>
+          <div class="diary-numpad" id="diary-numpad">
+            <button class="numpad-btn" data-key="7">7</button>
+            <button class="numpad-btn" data-key="8">8</button>
+            <button class="numpad-btn" data-key="9">9</button>
+            <button class="numpad-btn" data-key="4">4</button>
+            <button class="numpad-btn" data-key="5">5</button>
+            <button class="numpad-btn" data-key="6">6</button>
+            <button class="numpad-btn" data-key="1">1</button>
+            <button class="numpad-btn" data-key="2">2</button>
+            <button class="numpad-btn" data-key="3">3</button>
+            <button class="numpad-btn" data-key=".">.</button>
+            <button class="numpad-btn" data-key="0">0</button>
+            <button class="numpad-btn" data-key="back">⌫</button>
           </div>
-          <!-- Entry mode: numpad-first, swipe to commit -->
-          <div class="diary-entry-screen" id="diary-entry-screen">
-            <div class="diary-left-hint" id="diary-left-hint">$0 left today</div>
-            <div class="diary-amount-display" id="diary-amount-display">$0.00</div>
-            <div class="diary-numpad" id="diary-numpad">
-              <button class="numpad-btn" data-key="7">7</button>
-              <button class="numpad-btn" data-key="8">8</button>
-              <button class="numpad-btn" data-key="9">9</button>
-              <button class="numpad-btn" data-key="4">4</button>
-              <button class="numpad-btn" data-key="5">5</button>
-              <button class="numpad-btn" data-key="6">6</button>
-              <button class="numpad-btn" data-key="1">1</button>
-              <button class="numpad-btn" data-key="2">2</button>
-              <button class="numpad-btn" data-key="3">3</button>
-              <button class="numpad-btn" data-key=".">.</button>
-              <button class="numpad-btn" data-key="0">0</button>
-              <button class="numpad-btn" data-key="back">⌫</button>
-            </div>
-            <div class="diary-commit-row" id="diary-commit-row">
-              <button class="commit-btn commit-food" onclick="commitDiaryEntry('food')" title="Swipe left or tap"><span class="commit-arrow">←</span> <span class="commit-icon">🍽</span> Food</button>
-              <button class="commit-btn commit-lifestyle" onclick="commitDiaryEntry('lifestyle')" title="Swipe up or tap"><span class="commit-arrow">↑</span> <span class="commit-icon">✨</span> Lifestyle</button>
-              <button class="commit-btn commit-essentials" onclick="commitDiaryEntry('essentials')" title="Swipe right or tap">Essentials <span class="commit-icon">🏠</span> <span class="commit-arrow">→</span></button>
-            </div>
-            <div class="diary-entry-footer">
-              <div class="diary-today-strip" onclick="toggleDiaryEntries()">
-                <span id="diary-today-strip-text">Today: 0 · $0.00</span>
-                <span class="diary-strip-caret" id="diary-strip-caret">›</span>
-              </div>
-              <button class="diary-got-fab" onclick="openGotModal()" title="Log money received">+ GOT</button>
-            </div>
+          <div class="diary-commit-row" id="diary-commit-row">
+            <button class="commit-btn commit-food" onclick="commitDiaryEntry('food')" title="Swipe left or tap"><span class="commit-arrow">←</span> <span class="commit-icon">🍽</span> Food</button>
+            <button class="commit-btn commit-lifestyle" onclick="commitDiaryEntry('lifestyle')" title="Swipe up or tap"><span class="commit-arrow">↑</span> <span class="commit-icon">✨</span> Lifestyle</button>
+            <button class="commit-btn commit-essentials" onclick="commitDiaryEntry('essentials')" title="Swipe right or tap">Essentials <span class="commit-icon">🏠</span> <span class="commit-arrow">→</span></button>
           </div>
-          <!-- Expandable entries list -->
-          <div class="diary-entries-panel" id="diary-entries-panel">
-            <div class="diary-section-title"><span>today's spending</span><span class="diary-section-meta" id="diary-today-count"></span></div>
-            <div id="diary-entries-list"></div>
+          <div class="diary-entry-footer">
+            <div class="diary-today-strip" onclick="toggleDiaryEntries()">
+              <span id="diary-today-strip-text">Today: 0 · $0.00</span>
+              <span class="diary-strip-caret" id="diary-strip-caret">›</span>
+            </div>
+            <button class="diary-got-fab" onclick="openGotModal()" title="Log money received">+ GOT</button>
           </div>
         </div>
-        <div class="diary-col-side">
-          <div class="diary-month-summary">
-            <div class="diary-section-title" id="diary-month-title">this month</div>
-            <div class="diary-cat-totals" id="diary-cat-totals"></div>
-            <div class="diary-progress"><div class="diary-progress-bar" id="diary-progress-bar" style="width:0%;background:var(--green);"></div></div>
-            <div class="diary-progress-label" id="diary-progress-label">$0 of $0</div>
+        <div class="diary-entries-panel" id="diary-entries-panel">
+          <div class="diary-section-title"><span>today's spending</span><span class="diary-section-meta" id="diary-today-count"></span></div>
+          <div id="diary-entries-list"></div>
+        </div>
+      </div>
+
+      <!-- DESKTOP LAYOUT (>800px) -->
+      <div class="diary-desktop">
+        <div class="desktop-header">
+          <div class="desktop-date-nav">
+            <button onclick="diaryPrevDay()" title="Previous day">◀</button>
+            <div class="diary-today" id="desk-date-label">Today</div>
+            <button onclick="diaryNextDay()" title="Next day">▶</button>
+            <button onclick="diaryGoToday()" title="Go to today" class="desktop-today-btn">today</button>
+          </div>
+          <button class="diary-got-fab" onclick="openGotModal()" title="Log money received">+ GOT</button>
+        </div>
+        <div class="desktop-grid">
+          <div class="desktop-left">
+            <div class="entry-strip">
+              <input type="number" inputmode="decimal" class="entry-strip-amount" id="desk-amount" placeholder="$0.00" min="0" step="0.01" max="99.99">
+              <button class="entry-strip-cat entry-strip-cat-food" onclick="commitDesktopEntry('food')" title="(F) Food"><span>🍽</span> Food <kbd>F</kbd></button>
+              <button class="entry-strip-cat entry-strip-cat-ess" onclick="commitDesktopEntry('essentials')" title="(E) Essentials"><span>🏠</span> Ess <kbd>E</kbd></button>
+              <button class="entry-strip-cat entry-strip-cat-life" onclick="commitDesktopEntry('lifestyle')" title="(L) Lifestyle"><span>✨</span> Life <kbd>L</kbd></button>
+            </div>
+            <div class="desktop-entries-header">RECENT SPENDING</div>
+            <div class="desktop-entries" id="desktop-entries-list"></div>
+          </div>
+          <div class="desktop-right">
+            <div class="desktop-panel">
+              <div class="desktop-panel-title">Today</div>
+              <div class="desktop-hud">
+                <div class="desktop-hud-cell"><div class="desktop-hud-label">Budget</div><div class="desktop-hud-val accent" id="desk-budget">$0</div></div>
+                <div class="desktop-hud-cell"><div class="desktop-hud-label">Spent</div><div class="desktop-hud-val" id="desk-spent">$0</div></div>
+                <div class="desktop-hud-cell"><div class="desktop-hud-label">Left</div><div class="desktop-hud-val green" id="desk-left">$0</div></div>
+              </div>
+            </div>
+            <div class="desktop-panel">
+              <div class="desktop-panel-title">This Week</div>
+              <div id="desk-week-bars" class="desk-week-bars"></div>
+            </div>
+            <div class="desktop-panel">
+              <div class="desktop-panel-title" id="desk-month-title">This Month</div>
+              <div class="desktop-month-totals" id="desk-month-totals"></div>
+              <div class="desktop-month-progress"><div class="desktop-month-progress-bar" id="desk-month-progress-bar" style="width:0%;background:var(--green);"></div></div>
+              <div class="desktop-month-progress-label" id="desk-month-progress-label">$0 of $0</div>
+            </div>
+            <div class="desktop-panel">
+              <div class="desktop-panel-title">All Time</div>
+              <div class="desktop-alltime" id="desk-alltime">no data yet</div>
+            </div>
           </div>
         </div>
       </div>

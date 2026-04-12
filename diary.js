@@ -168,7 +168,277 @@ function renderDiary() {
 
   // Month summary
   renderDiaryMonthSummary(date);
+
+  // Desktop layout (if visible)
+  renderDiaryDesktop(date, dateStr, budget, spent, left);
 }
+
+// ─── DESKTOP LAYOUT RENDER ──────────────────────────────────────────────────
+
+function renderDiaryDesktop(date, dateStr, budget, spent, left) {
+  const deskRoot = document.querySelector('.diary-desktop');
+  if (!deskRoot || getComputedStyle(deskRoot).display === 'none') return;
+
+  // Date label
+  const dateLabel = document.getElementById('desk-date-label');
+  if (dateLabel) {
+    const today = diaryToday();
+    const isToday = diaryDateStr(today) === dateStr;
+    const opts = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+    dateLabel.textContent = (isToday ? 'Today — ' : '') + date.toLocaleDateString(undefined, opts);
+  }
+
+  // HUD
+  const bEl = document.getElementById('desk-budget');
+  const sEl = document.getElementById('desk-spent');
+  const lEl = document.getElementById('desk-left');
+  if (bEl) bEl.textContent = '$' + Math.max(0, budget).toFixed(2);
+  if (sEl) sEl.textContent = '$' + spent.toFixed(2);
+  if (lEl) {
+    lEl.textContent = (left < 0 ? '-' : '') + '$' + Math.abs(left).toFixed(2);
+    lEl.className = 'desktop-hud-val ' + (left >= 0 ? 'green' : 'red');
+  }
+
+  // Recent entries (last 7 days, grouped by date, today first)
+  renderDesktopEntries(date);
+
+  // This week bars
+  renderDesktopWeek(date);
+
+  // Month totals
+  renderDesktopMonth(date);
+
+  // All time
+  renderDesktopAllTime();
+
+  // Entry strip — enable/disable categories based on amount
+  syncDesktopEntryStrip();
+}
+
+function renderDesktopEntries(date) {
+  const list = document.getElementById('desktop-entries-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  // Collect entries for the last 7 days ending at the selected date
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(date);
+    d.setDate(d.getDate() - i);
+    const ds = diaryDateStr(d);
+    const entries = getEntriesForDate(ds);
+    if (entries.length > 0 || i === 0) {
+      days.push({ date: d, dateStr: ds, entries: entries });
+    }
+  }
+
+  if (days.every(function(d){return d.entries.length === 0;})) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'font-family:var(--mono);font-size:11px;color:var(--muted);padding:24px 0;text-align:center;';
+    empty.textContent = 'no entries in the last 7 days';
+    list.appendChild(empty);
+    return;
+  }
+
+  const todayStr = diaryDateStr(diaryToday());
+
+  days.forEach(function(d) {
+    if (d.entries.length === 0 && d.dateStr !== todayStr) return;
+    const group = document.createElement('div');
+    group.className = 'desktop-day-group';
+
+    const header = document.createElement('div');
+    header.className = 'desktop-day-header' + (d.dateStr === todayStr ? ' today' : '');
+    const label = d.dateStr === todayStr ? 'Today' : d.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const dayTotal = d.entries.reduce(function(s,e){
+      if (e.category === 'got-savings' || e.category === 'got-budget') return s;
+      return s + e.amount;
+    }, 0);
+    header.innerHTML = '<span>' + label + '</span><span>$' + dayTotal.toFixed(2) + '</span>';
+    group.appendChild(header);
+
+    d.entries.forEach(function(e) {
+      const isGot = e.category === 'got-savings' || e.category === 'got-budget';
+      let icon, lbl, color, sign;
+      if (isGot) {
+        icon = e.category === 'got-savings' ? '💰' : '💵';
+        lbl = e.category === 'got-savings' ? 'to savings' : 'to budget';
+        color = 'var(--green)'; sign = '+';
+      } else {
+        const cat = DIARY_CATEGORIES.find(function(c){return c.id === e.category;}) || DIARY_CATEGORIES[0];
+        icon = cat.icon; lbl = cat.label; color = cat.color; sign = '';
+      }
+      const row = document.createElement('div');
+      row.className = 'desktop-entry';
+      row.innerHTML =
+        '<span class="diary-entry-icon">' + icon + '</span>' +
+        '<span class="diary-entry-amount" style="' + (isGot ? 'color:var(--green);' : '') + '">' + sign + '$' + e.amount.toFixed(2) + '</span>' +
+        '<span class="diary-entry-cat" style="color:' + color + ';">' + escHtml(lbl) + '</span>' +
+        '<span class="diary-entry-note">' + escHtml(e.note || '') + '</span>' +
+        '<button class="remove-btn" onclick="deleteDiaryEntry(' + e.id + ')" title="Delete">×</button>';
+      group.appendChild(row);
+    });
+
+    list.appendChild(group);
+  });
+}
+
+function renderDesktopWeek(date) {
+  const container = document.getElementById('desk-week-bars');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const todayStr = diaryDateStr(diaryToday());
+  const dailyBudget = getDailyBudget(date);
+  const maxAmt = Math.max(dailyBudget * 1.2, 1);
+
+  // Show last 7 days ending today (or selected date if in past)
+  const endDate = new Date(date);
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(endDate);
+    d.setDate(d.getDate() - i);
+    const ds = diaryDateStr(d);
+    const spent = getEntriesForDate(ds).reduce(function(s,e){
+      if (e.category === 'got-savings') return s;
+      if (e.category === 'got-budget') return s - e.amount;
+      return s + e.amount;
+    }, 0);
+    const pct = Math.min(100, Math.max(0, (spent / maxAmt) * 100));
+    const overBudget = spent > dailyBudget;
+    const dayLabel = d.toLocaleDateString(undefined, { weekday: 'short' });
+    const isToday = ds === todayStr;
+
+    const row = document.createElement('div');
+    row.className = 'desk-week-row';
+    row.innerHTML =
+      '<span class="desk-week-day' + (isToday ? ' today' : '') + '">' + dayLabel + '</span>' +
+      '<div class="desk-week-bar-track"><div class="desk-week-bar' + (overBudget ? ' over-budget' : '') + '" style="width:' + pct + '%;"></div></div>' +
+      '<span class="desk-week-amount">$' + spent.toFixed(2) + '</span>';
+    container.appendChild(row);
+  }
+}
+
+function renderDesktopMonth(date) {
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const title = document.getElementById('desk-month-title');
+  if (title) title.textContent = monthNames[date.getMonth()] + ' ' + date.getFullYear();
+
+  const totals = getMonthCategoryTotals(date);
+  const monthBudget = getMonthBudget(date);
+  const monthSpent = (totals.food || 0) + (totals.essentials || 0) + (totals.lifestyle || 0);
+  const pct = monthBudget > 0 ? Math.min(100, (monthSpent / monthBudget) * 100) : 0;
+
+  const totalsEl = document.getElementById('desk-month-totals');
+  if (totalsEl) {
+    totalsEl.innerHTML = '';
+    const maxCat = Math.max(totals.food || 0, totals.essentials || 0, totals.lifestyle || 0, 1);
+    DIARY_CATEGORIES.forEach(function(cat) {
+      const amt = totals[cat.id] || 0;
+      const catPct = (amt / maxCat) * 100;
+      const row = document.createElement('div');
+      row.className = 'desktop-month-row';
+      row.innerHTML =
+        '<span class="cat-icon">' + cat.icon + '</span>' +
+        '<span class="cat-label">' + cat.label + '</span>' +
+        '<div class="cat-bar-track"><div class="cat-bar" style="width:' + catPct + '%;background:' + cat.color + ';"></div></div>' +
+        '<span class="cat-amount">$' + amt.toFixed(0) + '</span>';
+      totalsEl.appendChild(row);
+    });
+  }
+
+  const bar = document.getElementById('desk-month-progress-bar');
+  if (bar) {
+    bar.style.width = pct + '%';
+    bar.style.background = pct > 90 ? 'var(--red)' : pct > 70 ? 'var(--amber)' : 'var(--green)';
+  }
+  const label = document.getElementById('desk-month-progress-label');
+  if (label) label.textContent = '$' + monthSpent.toFixed(0) + ' of $' + Math.max(0, monthBudget).toFixed(0) + ' (' + pct.toFixed(0) + '%)';
+}
+
+function renderDesktopAllTime() {
+  const el = document.getElementById('desk-alltime');
+  if (!el) return;
+  // All-time net: sum of (daily budget - daily spent) for every day with entries
+  if (!diaryEntries || diaryEntries.length === 0) {
+    el.innerHTML = '<div class="sub">log entries to see trends</div>';
+    return;
+  }
+  const uniqueDates = {};
+  diaryEntries.forEach(function(e){ uniqueDates[e.date] = true; });
+  const dates = Object.keys(uniqueDates).sort();
+  let totalNet = 0;
+  let dayCount = 0;
+  dates.forEach(function(ds) {
+    const parts = ds.split('-');
+    const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+    const budget = getDailyBudget(d);
+    const spent = getEntriesForDate(ds).reduce(function(s,e){
+      if (e.category === 'got-savings') return s;
+      if (e.category === 'got-budget') return s - e.amount;
+      return s + e.amount;
+    }, 0);
+    totalNet += (budget - spent);
+    dayCount++;
+  });
+  const avgPerDay = dayCount > 0 ? totalNet / dayCount : 0;
+  const sign = totalNet >= 0 ? '+' : '-';
+  const cls = totalNet >= 0 ? 'positive' : 'negative';
+  el.innerHTML =
+    '<div class="net ' + cls + '">' + sign + '$' + Math.abs(totalNet).toFixed(0) + '</div>' +
+    '<div class="sub">' + (avgPerDay >= 0 ? '+' : '-') + '$' + Math.abs(avgPerDay).toFixed(2) + '/day avg · ' + dayCount + ' days tracked</div>';
+}
+
+function syncDesktopEntryStrip() {
+  const input = document.getElementById('desk-amount');
+  if (!input) return;
+  const val = parseFloat(input.value);
+  const enable = !isNaN(val) && val > 0;
+  document.querySelectorAll('.entry-strip-cat').forEach(function(b){ b.disabled = !enable; });
+}
+
+function commitDesktopEntry(category) {
+  const input = document.getElementById('desk-amount');
+  if (!input) return;
+  const amt = parseFloat(input.value);
+  if (isNaN(amt) || amt <= 0) return;
+  const entry = addDiaryEntry(amt, category, '');
+  if (entry) {
+    const cat = DIARY_CATEGORIES.find(function(c){return c.id === category;});
+    const catLabel = cat ? (cat.icon + ' ' + cat.label.toLowerCase()) : category;
+    if (typeof vibrate === 'function') vibrate(10);
+    showUndoToast('✓ $' + amt.toFixed(2) + ' ' + catLabel, function() {
+      removeDiaryEntry(entry.id);
+      renderDiary();
+    });
+  }
+  input.value = '';
+  syncDesktopEntryStrip();
+  renderDiary();
+  input.focus();
+}
+
+// Wire up desktop entry strip once
+(function(){
+  const input = document.getElementById('desk-amount');
+  if (!input) return;
+  input.addEventListener('input', syncDesktopEntryStrip);
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      // Default commit: Food
+      e.preventDefault();
+      commitDesktopEntry('food');
+      return;
+    }
+    // F/L/E shortcuts when input has value
+    const val = parseFloat(input.value);
+    if (!isNaN(val) && val > 0) {
+      const k = e.key.toLowerCase();
+      if (k === 'f') { e.preventDefault(); commitDesktopEntry('food'); }
+      else if (k === 'e') { e.preventDefault(); commitDesktopEntry('essentials'); }
+      else if (k === 'l') { e.preventDefault(); commitDesktopEntry('lifestyle'); }
+    }
+  });
+})();
 
 // ─── NUMPAD-FIRST ENTRY ─────────────────────────────────────────────────────
 
