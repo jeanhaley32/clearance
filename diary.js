@@ -148,10 +148,19 @@ function renderDiaryEntries(dateStr) {
   const list = document.getElementById('diary-entries-list');
   list.innerHTML = '';
   const entries = getEntriesForDate(dateStr);
+  const countEl = document.getElementById('diary-today-count');
+  if (countEl) {
+    if (entries.length === 0) {
+      countEl.textContent = '';
+    } else {
+      const total = entries.reduce(function(s,e){return s+e.amount;},0);
+      countEl.textContent = entries.length + (entries.length === 1 ? ' entry' : ' entries') + ' · $' + total.toFixed(2);
+    }
+  }
 
   if (entries.length === 0) {
     const empty = document.createElement('div');
-    empty.style.cssText = 'font-family:var(--mono);font-size:11px;color:var(--muted);padding:12px 0;text-align:center;';
+    empty.style.cssText = 'font-family:var(--mono);font-size:11px;color:var(--muted);padding:20px 0;text-align:center;';
     empty.textContent = 'no spending logged';
     list.appendChild(empty);
     return;
