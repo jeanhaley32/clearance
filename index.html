@@ -280,6 +280,35 @@ input.inline-num:focus{border-color:var(--accent);}
 .diary-hero-val.green{color:var(--green);}
 .diary-hero-val.red{color:var(--red);}
 .diary-hero-val.accent{color:var(--accent);}
+/* NUMPAD-FIRST ENTRY SCREEN */
+.diary-entry-screen{display:flex;flex-direction:column;gap:0.75rem;}
+.diary-left-hint{text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;}
+.diary-amount-display{font-family:var(--mono);font-size:64px;font-weight:500;color:var(--text);text-align:center;letter-spacing:-0.03em;line-height:1;padding:0.5rem 0;min-height:80px;transition:color 0.15s,transform 0.15s;}
+.diary-amount-display.empty{color:var(--muted);}
+.diary-amount-display.bounce{animation:bounceAmount 0.35s ease;}
+@keyframes bounceAmount{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
+.diary-numpad{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;max-width:420px;width:100%;margin:0 auto;}
+.numpad-btn{background:var(--s2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:24px;font-weight:400;padding:0;min-height:60px;cursor:pointer;transition:all 0.1s;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
+.numpad-btn:hover{background:var(--accent-dim);border-color:var(--accent);}
+.numpad-btn:active{transform:scale(0.95);background:var(--accent-dim);}
+.numpad-btn[data-key="back"]{font-size:20px;color:var(--muted2);}
+.diary-commit-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;max-width:420px;width:100%;margin:0.5rem auto 0;}
+.commit-btn{background:var(--s2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:11px;letter-spacing:0.04em;padding:12px 6px;cursor:pointer;transition:all 0.15s;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;-webkit-tap-highlight-color:transparent;}
+.commit-btn:disabled{opacity:0.35;cursor:not-allowed;}
+.commit-btn:not(:disabled):hover{border-color:var(--accent);background:var(--accent-dim);}
+.commit-btn:not(:disabled):active{transform:translateY(1px);}
+.commit-icon{font-size:18px;}
+.commit-arrow{color:var(--muted);font-size:12px;}
+.diary-entry-footer{display:flex;align-items:center;gap:10px;margin-top:0.25rem;}
+.diary-today-strip{flex:1;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:11px;color:var(--muted2);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color 0.15s;}
+.diary-today-strip:hover{border-color:var(--border2);color:var(--text);}
+.diary-strip-caret{color:var(--muted);font-size:16px;transition:transform 0.2s;}
+.diary-strip-caret.open{transform:rotate(90deg);}
+.diary-got-fab{background:var(--s2);border:1px solid var(--green);color:var(--green);border-radius:8px;padding:10px 16px;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;cursor:pointer;transition:all 0.15s;flex-shrink:0;min-height:40px;-webkit-tap-highlight-color:transparent;}
+.diary-got-fab:hover{background:var(--green-dim);}
+.diary-entries-panel{margin-top:1rem;display:none;}
+.diary-entries-panel.open{display:block;animation:fadeIn 0.2s ease;}
+
 .diary-add{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:1.25rem;}
 .diary-amount-row{display:flex;gap:8px;margin-bottom:12px;}
 .diary-amount-input{flex:1;background:var(--s3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:20px;padding:12px 16px;outline:none;text-align:center;}
@@ -449,10 +478,12 @@ input.inline-num:focus{border-color:var(--accent);}
   .tab-btn{min-height:44px;padding:12px 10px;font-size:11px;}
   .diary-view{padding:1rem;}
   .diary-view-inner{grid-template-columns:1fr;gap:0;max-width:600px;}
-  .diary-col-side{margin-top:0.5rem;}
+  .diary-col-side{margin-top:1rem;}
   .diary-hero-val{font-size:22px;}
   .diary-amount-input{font-size:16px;}
   .diary-cat-btn{min-height:56px;}
+  .diary-amount-display{font-size:52px;min-height:68px;}
+  .numpad-btn{min-height:56px;font-size:22px;}
   .view-toggle{margin-left:0.5rem;}
   .header{padding-top:calc(0.75rem + env(safe-area-inset-top));padding-left:calc(1rem + env(safe-area-inset-left));padding-right:calc(1rem + env(safe-area-inset-right));}
 }
@@ -661,24 +692,39 @@ input.inline-num:focus{border-color:var(--accent);}
             <button onclick="diaryNextDay()" title="Next day">▶</button>
             <button onclick="diaryGoToday()" title="Go to today" style="font-size:10px;">today</button>
           </div>
-          <div class="diary-hero">
-            <div class="diary-hero-cell"><div class="diary-hero-label">Budget</div><div class="diary-hero-val accent" id="diary-budget">$0</div></div>
-            <div class="diary-hero-cell"><div class="diary-hero-label">Spent</div><div class="diary-hero-val" id="diary-spent">$0</div></div>
-            <div class="diary-hero-cell"><div class="diary-hero-label">Left</div><div class="diary-hero-val green" id="diary-left">$0</div></div>
-          </div>
-          <div class="diary-add" id="diary-add-section">
-            <div class="diary-amount-row">
-              <input type="number" inputmode="decimal" enterkeyhint="done" class="diary-amount-input" id="diary-amount" placeholder="0.00" min="0" step="0.01">
+          <!-- Entry mode: numpad-first, swipe to commit -->
+          <div class="diary-entry-screen" id="diary-entry-screen">
+            <div class="diary-left-hint" id="diary-left-hint">$0 left today</div>
+            <div class="diary-amount-display" id="diary-amount-display">$0.00</div>
+            <div class="diary-numpad" id="diary-numpad">
+              <button class="numpad-btn" data-key="7">7</button>
+              <button class="numpad-btn" data-key="8">8</button>
+              <button class="numpad-btn" data-key="9">9</button>
+              <button class="numpad-btn" data-key="4">4</button>
+              <button class="numpad-btn" data-key="5">5</button>
+              <button class="numpad-btn" data-key="6">6</button>
+              <button class="numpad-btn" data-key="1">1</button>
+              <button class="numpad-btn" data-key="2">2</button>
+              <button class="numpad-btn" data-key="3">3</button>
+              <button class="numpad-btn" data-key=".">.</button>
+              <button class="numpad-btn" data-key="0">0</button>
+              <button class="numpad-btn" data-key="back">⌫</button>
             </div>
-            <div class="diary-cats">
-              <button class="diary-cat-btn" onclick="diaryAddEntry('food')"><span class="cat-icon">🍽</span><span class="cat-label">Food</span></button>
-              <button class="diary-cat-btn" onclick="diaryAddEntry('essentials')"><span class="cat-icon">🏠</span><span class="cat-label">Essentials</span></button>
-              <button class="diary-cat-btn" onclick="diaryAddEntry('lifestyle')"><span class="cat-icon">✨</span><span class="cat-label">Lifestyle</span></button>
+            <div class="diary-commit-row" id="diary-commit-row">
+              <button class="commit-btn commit-food" onclick="commitDiaryEntry('food')" title="Swipe left or tap"><span class="commit-arrow">←</span> <span class="commit-icon">🍽</span> Food</button>
+              <button class="commit-btn commit-lifestyle" onclick="commitDiaryEntry('lifestyle')" title="Swipe up or tap"><span class="commit-arrow">↑</span> <span class="commit-icon">✨</span> Lifestyle</button>
+              <button class="commit-btn commit-essentials" onclick="commitDiaryEntry('essentials')" title="Swipe right or tap">Essentials <span class="commit-icon">🏠</span> <span class="commit-arrow">→</span></button>
             </div>
-            <button class="diary-note-toggle" id="diary-note-toggle" onclick="toggleDiaryNote()">+ add note</button>
-            <input type="text" class="diary-note-input" id="diary-note" placeholder="what was this for?" maxlength="60">
+            <div class="diary-entry-footer">
+              <div class="diary-today-strip" onclick="toggleDiaryEntries()">
+                <span id="diary-today-strip-text">Today: 0 · $0.00</span>
+                <span class="diary-strip-caret" id="diary-strip-caret">›</span>
+              </div>
+              <button class="diary-got-fab" onclick="openGotModal()" title="Log money received">+ GOT</button>
+            </div>
           </div>
-          <div class="diary-entries">
+          <!-- Expandable entries list -->
+          <div class="diary-entries-panel" id="diary-entries-panel">
             <div class="diary-section-title"><span>today's spending</span><span class="diary-section-meta" id="diary-today-count"></span></div>
             <div id="diary-entries-list"></div>
           </div>
@@ -800,6 +846,27 @@ input.inline-num:focus{border-color:var(--accent);}
         <button class="btn-secondary" onclick="closeModal('modal-month-edit')">Cancel</button>
         <button class="btn-primary" onclick="saveMonthOverride()">Save</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- GOT (receive money) MODAL -->
+<div class="modal-overlay" id="modal-got">
+  <div class="modal">
+    <h3>Money received</h3>
+    <div class="modal-field">
+      <label>Amount ($)</label>
+      <input type="number" inputmode="decimal" id="got-amount" placeholder="0.00" min="0" step="0.01">
+    </div>
+    <div class="modal-field">
+      <label>Note (optional)</label>
+      <input type="text" id="got-note" placeholder="tax refund, gift, etc." maxlength="60">
+    </div>
+    <div class="modal-hint">Destination: where should this money go?</div>
+    <div class="modal-actions" style="gap:8px;flex-wrap:wrap;">
+      <button class="btn-secondary" onclick="closeModal('modal-got')">Cancel</button>
+      <button class="btn-secondary" onclick="commitGot('budget')" style="flex:1;">To today's budget</button>
+      <button class="btn-primary" onclick="commitGot('savings')" style="flex:1;">💰 To savings</button>
     </div>
   </div>
 </div>

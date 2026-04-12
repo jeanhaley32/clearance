@@ -51,12 +51,21 @@ function getEntriesForMonth(year, month) {
   return diaryEntries.filter(function(e) { return e.date.startsWith(prefix); });
 }
 
+function isSpendingCategory(cat) {
+  // GOT entries are excluded from "spent" totals
+  return cat !== 'got-savings' && cat !== 'got-budget';
+}
+
 function getDaySpent(dateStr) {
-  return getEntriesForDate(dateStr).reduce(function(s, e) { return s + e.amount; }, 0);
+  // Spending = spend categories minus any 'got-budget' received today
+  return getEntriesForDate(dateStr).reduce(function(s, e) {
+    if (e.category === 'got-budget') return s - e.amount;
+    if (e.category === 'got-savings') return s; // doesn't affect today's spent
+    return s + e.amount;
+  }, 0);
 }
 
 function getMonthSpentBefore(date) {
-  // Sum all spending in the same month, on days before this date
   const year = date.getFullYear();
   const month = date.getMonth();
   const dayOfMonth = date.getDate();
@@ -64,7 +73,10 @@ function getMonthSpentBefore(date) {
   let total = 0;
   entries.forEach(function(e) {
     const eDay = parseInt(e.date.split('-')[2]);
-    if (eDay < dayOfMonth) total += e.amount;
+    if (eDay >= dayOfMonth) return;
+    if (e.category === 'got-savings') return; // doesn't offset spending
+    if (e.category === 'got-budget') { total -= e.amount; return; }
+    total += e.amount;
   });
   return total;
 }
@@ -83,11 +95,13 @@ function getDailyBudget(date) {
   const daysInMo = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   const dayOfMonth = date.getDate();
 
-  // Spread the deficit: remaining budget / remaining days
+  // Spread the deficit: remaining budget / remaining days.
+  // Leftover from underspending inflates today's budget — user is prompted
+  // at month-end to decide where to direct the surplus (savings, extra debt
+  // payment, roll forward) rather than blow it.
   const spentBefore = getMonthSpentBefore(date);
   const remainingBudget = monthSurplus - spentBefore;
   const remainingDays = daysInMo - dayOfMonth + 1; // including today
-
   return remainingBudget / remainingDays;
 }
 
@@ -123,25 +137,212 @@ function renderDiary() {
   const opts = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
   dateLabel.textContent = (isToday ? 'Today — ' : '') + date.toLocaleDateString(undefined, opts);
 
-  // Budget
+  // Budget + left (single number now, above numpad)
   const budget = getDailyBudget(date);
   const spent = getDaySpent(dateStr);
   const left = budget - spent;
 
-  document.getElementById('diary-budget').textContent = '$' + Math.max(0, budget).toFixed(2);
-  document.getElementById('diary-spent').textContent = '$' + spent.toFixed(2);
-  const leftEl = document.getElementById('diary-left');
-  leftEl.textContent = (left < 0 ? '-' : '') + '$' + Math.abs(left).toFixed(2);
-  leftEl.className = 'diary-hero-val ' + (left >= 0 ? 'green' : 'red');
+  const hintEl = document.getElementById('diary-left-hint');
+  if (hintEl) {
+    const leftAbs = Math.abs(left);
+    const prefix = left < 0 ? '-$' : '$';
+    hintEl.textContent = prefix + leftAbs.toFixed(2) + ' left today';
+    hintEl.style.color = left >= 0 ? 'var(--muted)' : 'var(--red)';
+  }
 
-  // Show/hide add section for future dates
-  document.getElementById('diary-add-section').style.display = isFuture ? 'none' : '';
+  // Hide entry screen for future dates (can only view entries, not add)
+  const entryScreen = document.getElementById('diary-entry-screen');
+  if (entryScreen) entryScreen.style.display = isFuture ? 'none' : '';
+
+  // Today strip text
+  const entries = getEntriesForDate(dateStr);
+  const total = entries.reduce(function(s,e){return s+e.amount;},0);
+  const stripText = document.getElementById('diary-today-strip-text');
+  if (stripText) {
+    const label = isToday ? 'Today' : date.toLocaleDateString(undefined, {month:'short',day:'numeric'});
+    stripText.textContent = label + ': ' + entries.length + ' · $' + total.toFixed(2);
+  }
 
   // Entries list
   renderDiaryEntries(dateStr);
 
   // Month summary
   renderDiaryMonthSummary(date);
+}
+
+// ─── NUMPAD-FIRST ENTRY ─────────────────────────────────────────────────────
+
+let diaryAmountStr = '';
+
+function diaryAmountValue() {
+  const v = parseFloat(diaryAmountStr);
+  return isNaN(v) ? 0 : v;
+}
+
+function updateDiaryAmountDisplay() {
+  const el = document.getElementById('diary-amount-display');
+  if (!el) return;
+  const v = diaryAmountValue();
+  if (!diaryAmountStr || v === 0) {
+    el.textContent = '$0.00';
+    el.classList.add('empty');
+  } else {
+    // Show what user has typed, preserving trailing decimals
+    const parts = diaryAmountStr.split('.');
+    const whole = parts[0] || '0';
+    const dec = parts[1] !== undefined ? parts[1].slice(0,2) : null;
+    el.textContent = '$' + (parseInt(whole)||0).toLocaleString() + (dec !== null ? '.' + dec.padEnd(2,'0') : '.00');
+    el.classList.remove('empty');
+  }
+  // Enable/disable category buttons
+  const commitBtns = document.querySelectorAll('#diary-commit-row .commit-btn');
+  commitBtns.forEach(function(b){ b.disabled = v <= 0; });
+}
+
+function pressNumpad(key) {
+  if (key === 'back') {
+    diaryAmountStr = diaryAmountStr.slice(0, -1);
+  } else if (key === '.') {
+    if (!diaryAmountStr.includes('.')) {
+      diaryAmountStr = (diaryAmountStr || '0') + '.';
+    }
+  } else {
+    // digit
+    if (diaryAmountStr.includes('.')) {
+      const dec = diaryAmountStr.split('.')[1];
+      if (dec && dec.length >= 2) return; // max 2 decimal places
+    }
+    // cap at $99.99 (hard-stop)
+    const newStr = diaryAmountStr + key;
+    const newVal = parseFloat(newStr);
+    if (newVal > 99.99) {
+      bounceAmount();
+      return;
+    }
+    diaryAmountStr = newStr === '0' ? '' : newStr;
+  }
+  updateDiaryAmountDisplay();
+}
+
+function bounceAmount() {
+  const el = document.getElementById('diary-amount-display');
+  if (!el) return;
+  el.classList.remove('bounce');
+  void el.offsetWidth; // force reflow
+  el.classList.add('bounce');
+}
+
+// Track last commit for debounce + undo
+let lastCommitTime = 0;
+
+function commitDiaryEntry(category) {
+  const now = Date.now();
+  if (now - lastCommitTime < 500) return; // debounce
+  const amt = diaryAmountValue();
+  if (amt <= 0) {
+    bounceAmount();
+    return;
+  }
+  lastCommitTime = now;
+  const entry = addDiaryEntry(amt, category, '');
+  if (entry) {
+    const cat = DIARY_CATEGORIES.find(function(c){return c.id === category;});
+    const catLabel = cat ? (cat.icon + ' ' + cat.label.toLowerCase()) : category;
+    if (typeof vibrate === 'function') vibrate(10);
+    showUndoToast('✓ $' + amt.toFixed(2) + ' ' + catLabel, function() {
+      removeDiaryEntry(entry.id);
+      renderDiary();
+    });
+  }
+  diaryAmountStr = '';
+  updateDiaryAmountDisplay();
+  renderDiary();
+}
+
+function toggleDiaryEntries() {
+  const panel = document.getElementById('diary-entries-panel');
+  const caret = document.getElementById('diary-strip-caret');
+  if (!panel) return;
+  const isOpen = panel.classList.toggle('open');
+  if (caret) caret.classList.toggle('open', isOpen);
+}
+
+// Swipe-to-commit on the amount display or numpad area
+function attachDiarySwipe() {
+  const area = document.getElementById('diary-entry-screen');
+  if (!area || area.dataset.swipeBound) return;
+  area.dataset.swipeBound = '1';
+  let startX = 0, startY = 0, tracking = false;
+  area.addEventListener('pointerdown', function(e) {
+    // Don't start swipe on a button press
+    if (e.target.closest('.numpad-btn') || e.target.closest('.commit-btn') || e.target.closest('.diary-got-fab') || e.target.closest('.diary-today-strip')) return;
+    startX = e.clientX; startY = e.clientY; tracking = true;
+  });
+  area.addEventListener('pointerup', function(e) {
+    if (!tracking) return;
+    tracking = false;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const absDx = Math.abs(dx), absDy = Math.abs(dy);
+    const threshold = Math.min(window.innerWidth, 400) * 0.25;
+    if (absDx < threshold && absDy < threshold) return; // too short
+    if (diaryAmountValue() <= 0) { bounceAmount(); return; }
+    if (absDx > absDy) {
+      if (dx < 0) commitDiaryEntry('food');        // swipe left → Food
+      else commitDiaryEntry('essentials');          // swipe right → Essentials
+    } else {
+      if (dy < 0) commitDiaryEntry('lifestyle');    // swipe up → Lifestyle
+      // swipe down does nothing (reserved for future GOT)
+    }
+  });
+  area.addEventListener('pointercancel', function(){ tracking = false; });
+}
+
+// Numpad click delegation
+(function(){
+  const pad = document.getElementById('diary-numpad');
+  if (pad) {
+    pad.addEventListener('click', function(e) {
+      const btn = e.target.closest('.numpad-btn');
+      if (!btn) return;
+      pressNumpad(btn.dataset.key);
+    });
+  }
+  attachDiarySwipe();
+  updateDiaryAmountDisplay();
+})();
+
+// ─── GOT MODAL ──────────────────────────────────────────────────────────────
+function openGotModal() {
+  document.getElementById('got-amount').value = '';
+  document.getElementById('got-note').value = '';
+  document.getElementById('modal-got').classList.add('open');
+  setTimeout(function(){ document.getElementById('got-amount').focus(); }, 50);
+}
+
+function commitGot(destination) {
+  const amt = parseFloat(document.getElementById('got-amount').value);
+  if (isNaN(amt) || amt <= 0) {
+    showToast('Enter an amount', 'error');
+    return;
+  }
+  const note = document.getElementById('got-note').value.trim().slice(0, 60);
+  const cat = destination === 'savings' ? 'got-savings' : 'got-budget';
+  // Use a manual entry push (addDiaryEntry rejects <=0 but we can add directly)
+  const dateStr = diaryDateStr(diaryDate || diaryToday());
+  const entry = {
+    id: nextDiaryId++,
+    date: dateStr,
+    amount: amt,
+    category: cat,
+    note: note
+  };
+  diaryEntries.push(entry);
+  markDirty();
+  if (typeof vibrate === 'function') vibrate(10);
+  showToast('✓ Received $' + amt.toFixed(2) + ' → ' + (destination === 'savings' ? 'savings' : 'today\'s budget'), 'success');
+  closeModal('modal-got');
+  renderDiary();
 }
 
 function renderDiaryEntries(dateStr) {
@@ -167,16 +368,26 @@ function renderDiaryEntries(dateStr) {
   }
 
   entries.forEach(function(e) {
-    const cat = DIARY_CATEGORIES.find(function(c) { return c.id === e.category; }) || DIARY_CATEGORIES[0];
+    const isGot = e.category === 'got-savings' || e.category === 'got-budget';
+    let icon, label, color, sign;
+    if (isGot) {
+      icon = e.category === 'got-savings' ? '💰' : '💵';
+      label = e.category === 'got-savings' ? 'to savings' : 'to budget';
+      color = 'var(--green)';
+      sign = '+';
+    } else {
+      const cat = DIARY_CATEGORIES.find(function(c) { return c.id === e.category; }) || DIARY_CATEGORIES[0];
+      icon = cat.icon; label = cat.label; color = cat.color; sign = '';
+    }
     const div = document.createElement('div');
     div.className = 'diary-entry';
     div.dataset.entryId = e.id;
     div.innerHTML =
       '<div class="diary-entry-swipe-action">delete</div>' +
       '<div class="diary-entry-content">' +
-        '<span class="diary-entry-icon">' + cat.icon + '</span>' +
-        '<span class="diary-entry-amount">$' + e.amount.toFixed(2) + '</span>' +
-        '<span class="diary-entry-cat" style="color:' + cat.color + ';">' + cat.label + '</span>' +
+        '<span class="diary-entry-icon">' + icon + '</span>' +
+        '<span class="diary-entry-amount" style="' + (isGot ? 'color:var(--green);' : '') + '">' + sign + '$' + e.amount.toFixed(2) + '</span>' +
+        '<span class="diary-entry-cat" style="color:' + color + ';">' + escHtml(label) + '</span>' +
         '<span class="diary-entry-note">' + escHtml(e.note || '') + '</span>' +
         '<button class="remove-btn" onclick="deleteDiaryEntry(' + e.id + ')" title="Delete">×</button>' +
       '</div>';
