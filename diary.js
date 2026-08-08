@@ -420,6 +420,7 @@ function commitDesktopEntry(category) {
 
 // Wire up desktop entry strip once
 (function(){
+  if (typeof document === 'undefined') return;
   const input = document.getElementById('desk-amount');
   if (!input) return;
   input.addEventListener('input', syncDesktopEntryStrip);
@@ -571,6 +572,7 @@ function attachDiarySwipe() {
 
 // Numpad click delegation
 (function(){
+  if (typeof document === 'undefined') return;
   const pad = document.getElementById('diary-numpad');
   if (pad) {
     pad.addEventListener('click', function(e) {
